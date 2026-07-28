@@ -150,17 +150,30 @@ export const PartnerBrandsView: React.FC<PartnerBrandsViewProps> = ({
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3">
-                      {brand.logoUrl ? (
-                        <img
-                          src={brand.logoUrl}
-                          alt={brand.nameAr}
-                          className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0 bg-white"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 font-extrabold flex items-center justify-center text-lg shrink-0">
-                          {brand.nameAr.charAt(0)}
-                        </div>
-                      )}
+                      {/* Logo Container with Featured Star Badge Overlay */}
+                      <div className="relative shrink-0">
+                        {brand.logoUrl ? (
+                          <img
+                            src={brand.logoUrl}
+                            alt={brand.nameAr}
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-white"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 font-extrabold flex items-center justify-center text-lg">
+                            {brand.nameAr.charAt(0)}
+                          </div>
+                        )}
+                        {/* Circular Yellow Star Badge on top-left corner */}
+                        {brand.isFeatured && (
+                          <div
+                            className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-amber-400 text-amber-950 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-black z-10"
+                            title="علامة تجارية مميزة"
+                          >
+                            ★
+                          </div>
+                        )}
+                      </div>
+
                       <div>
                         <h4 className="font-extrabold text-slate-900 text-base group-hover:text-emerald-700 transition">
                           {brand.nameAr}
@@ -222,7 +235,7 @@ export const PartnerBrandsView: React.FC<PartnerBrandsViewProps> = ({
                       title="تعديل العلامة التجارية"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 210.3H3v-3.572L16.732 3.732z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
                     <button

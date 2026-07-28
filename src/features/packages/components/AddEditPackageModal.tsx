@@ -177,12 +177,12 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
           </p>
         </div>
 
-        {/* Main Tabs (المعلومات الأساسية | المميزات والصلاحيات) */}
-        <div className="flex items-center justify-center gap-8 border-b border-slate-100 text-xs font-bold pt-3 pb-0">
+        {/* Main Tabs (المعلومات الأساسية | المميزات والصلاحيات) - Aligned to Right */}
+        <div className="flex items-center justify-start px-6 gap-8 border-b border-slate-100 text-xs font-bold pt-3 pb-0">
           <button
             type="button"
             onClick={() => setActiveTab('basic')}
-            className={`pb-2.5 px-3 relative transition cursor-pointer ${
+            className={`pb-2.5 px-1 relative transition cursor-pointer ${
               activeTab === 'basic' ? 'text-[#d83f2a]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
@@ -194,7 +194,7 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('features')}
-            className={`pb-2.5 px-3 relative transition cursor-pointer ${
+            className={`pb-2.5 px-1 relative transition cursor-pointer ${
               activeTab === 'features' ? 'text-[#d83f2a]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
@@ -206,12 +206,12 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
           {/* TAB 1: BASIC INFO */}
           {activeTab === 'basic' && (
-            <div className="space-y-4">
-              {/* Language Switcher */}
-              <div className="flex items-center justify-center gap-4 text-xs font-bold mb-4">
+            <div className="space-y-5">
+              {/* Language Switcher - Aligned to Right */}
+              <div className="flex items-center justify-start gap-3 text-xs font-bold mb-4">
                 <button
                   type="button"
                   onClick={() => setActiveLang('ar')}
@@ -296,25 +296,30 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
               )}
 
               {/* Section: Pricing */}
-              <div className="pt-3 border-t border-slate-100 space-y-4">
+              <div className="pt-4 border-t border-slate-100 space-y-4">
                 <h4 className="text-xs font-extrabold text-slate-400">التسعير</h4>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       السعر (د.أ) <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="1"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      placeholder="0.00"
-                      dir="ltr"
-                      className="w-full text-right px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 font-extrabold text-sm placeholder-slate-300 focus:outline-none focus:border-[#d83f2a] transition"
-                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="1"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                        placeholder="0.00"
+                        dir="ltr"
+                        className="w-full text-right pl-12 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 font-extrabold text-sm placeholder-slate-300 focus:outline-none focus:border-[#d83f2a] transition"
+                      />
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-400 pointer-events-none">
+                        د.أ
+                      </span>
+                    </div>
                   </div>
 
                   <div>
@@ -337,41 +342,38 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
 
           {/* TAB 2: FEATURES & PERMISSIONS */}
           {activeTab === 'features' && (
-            <div className="space-y-5">
-              {/* Features Input Section */}
+            <div className="space-y-6">
+              {/* Features Input Container (Compact Tag & Text Field) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">المميزات</label>
-                <p className="text-[11px] text-slate-400 mb-2">اكتب الميزة واضغط Enter لإضافتها كوسم</p>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">المميزات</label>
 
-                <input
-                  type="text"
-                  value={featureInput}
-                  onChange={(e) => setFeatureInput(e.target.value)}
-                  onKeyDown={handleKeyDownFeature}
-                  placeholder="اكتب ميزة واضغط Enter لإضافتها..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium placeholder-slate-400 focus:outline-none focus:border-[#d83f2a] transition mb-3"
-                />
-
-                {/* Selected Feature Tags */}
-                {features.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    {features.map((feat) => (
-                      <span
-                        key={feat}
-                        className="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-[#d83f2a] border border-rose-200 flex items-center gap-1.5"
+                {/* Compact Tag-Input Box */}
+                <div className="w-full p-2 px-3 rounded-xl bg-white border border-slate-200 focus-within:border-[#d83f2a] transition flex flex-wrap items-center gap-1.5 min-h-[42px] mb-2.5">
+                  {features.map((feat) => (
+                    <span
+                      key={feat}
+                      className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-[#d83f2a] border border-rose-200 flex items-center gap-1.5"
+                    >
+                      <span>{feat}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFeature(feat)}
+                        className="hover:text-red-800 cursor-pointer font-extrabold text-sm leading-none"
                       >
-                        <span>{feat}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFeature(feat)}
-                          className="hover:text-red-800 cursor-pointer font-extrabold"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                        ×
+                      </button>
+                    </span>
+                  ))}
+
+                  <input
+                    type="text"
+                    value={featureInput}
+                    onChange={(e) => setFeatureInput(e.target.value)}
+                    onKeyDown={handleKeyDownFeature}
+                    placeholder={features.length > 0 ? '' : 'إضافة ميزة...'}
+                    className="flex-1 min-w-[120px] bg-transparent text-slate-800 text-xs font-medium placeholder-slate-400 focus:outline-none py-1"
+                  />
+                </div>
 
                 {/* Suggested Tags */}
                 <div>
@@ -404,7 +406,7 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
                 <h4 className="text-xs font-extrabold text-slate-400">الصلاحيات والحدود</h4>
                 <p className="text-[11px] text-slate-400 mb-2">اترك الحقل فارغاً للإشارة إلى حد غير محدود</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">الحد الأقصى للعروض</label>
                     <input
@@ -413,8 +415,8 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
                       value={maxOffers}
                       onChange={(e) => setMaxOffers(e.target.value)}
                       placeholder="غير محدود"
-                      dir="ltr"
-                      className="w-full text-right px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
+                      dir="rtl"
+                      className="w-full px-5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
                     />
                   </div>
 
@@ -426,8 +428,8 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
                       value={maxJobs}
                       onChange={(e) => setMaxJobs(e.target.value)}
                       placeholder="غير محدود"
-                      dir="ltr"
-                      className="w-full text-right px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
+                      dir="rtl"
+                      className="w-full px-5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
                     />
                   </div>
 
@@ -439,8 +441,8 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
                       value={maxPromoCodes}
                       onChange={(e) => setMaxPromoCodes(e.target.value)}
                       placeholder="غير محدود"
-                      dir="ltr"
-                      className="w-full text-right px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
+                      dir="rtl"
+                      className="w-full px-5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
                     />
                   </div>
 
@@ -452,8 +454,8 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
                       value={maxMenuItems}
                       onChange={(e) => setMaxMenuItems(e.target.value)}
                       placeholder="غير محدود"
-                      dir="ltr"
-                      className="w-full text-right px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
+                      dir="rtl"
+                      className="w-full px-5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
                     />
                   </div>
 
@@ -465,8 +467,8 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
                       value={maxImages}
                       onChange={(e) => setMaxImages(e.target.value)}
                       placeholder="غير محدود"
-                      dir="ltr"
-                      className="w-full text-right px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
+                      dir="rtl"
+                      className="w-full px-5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold placeholder-slate-400 focus:bg-white focus:border-[#d83f2a] transition"
                     />
                   </div>
                 </div>

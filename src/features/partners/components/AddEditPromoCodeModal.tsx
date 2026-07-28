@@ -106,8 +106,8 @@ export const AddEditPromoCodeModal: React.FC<AddEditPromoCodeModalProps> = ({
           </p>
         </div>
 
-        {/* Language Tabs */}
-        <div className="flex items-center justify-center gap-8 border-b border-slate-100 text-xs font-bold pt-3 pb-0">
+        {/* Language Tabs - Aligned to Right */}
+        <div className="flex items-center justify-start px-6 gap-8 border-b border-slate-100 text-xs font-bold pt-3 pb-0">
           <button
             type="button"
             onClick={() => setActiveLang('ar')}

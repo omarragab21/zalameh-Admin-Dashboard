@@ -188,17 +188,27 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          {brand.logoUrl ? (
-            <img
-              src={brand.logoUrl}
-              alt={brand.nameAr}
-              className="w-14 h-14 rounded-2xl object-cover border border-slate-200 shrink-0 bg-white"
-            />
-          ) : (
-            <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-extrabold flex items-center justify-center text-2xl shrink-0">
-              {brand.nameAr.charAt(0)}
-            </div>
-          )}
+          <div className="relative shrink-0">
+            {brand.logoUrl ? (
+              <img
+                src={brand.logoUrl}
+                alt={brand.nameAr}
+                className="w-14 h-14 rounded-2xl object-cover border border-slate-200 bg-white"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-extrabold flex items-center justify-center text-2xl">
+                {brand.nameAr.charAt(0)}
+              </div>
+            )}
+            {brand.isFeatured && (
+              <div
+                className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-amber-400 text-amber-950 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-black z-10"
+                title="علامة تجارية مميزة"
+              >
+                ★
+              </div>
+            )}
+          </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-extrabold text-slate-900">{brand.nameAr}</h2>
@@ -234,7 +244,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
             className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition flex items-center gap-2 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             تعديل
           </button>
@@ -544,7 +554,25 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-500">{branch.address || '—'}</td>
+                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-500">
+                      <div className="flex flex-col gap-1">
+                        <span>{branch.address || '—'}</span>
+                        {branch.mapUrl && (
+                          <a
+                            href={branch.mapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-bold text-sky-600 hover:text-sky-800 flex items-center gap-1 hover:underline w-fit"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>فتح الموقع على الخريطة 📍</span>
+                          </a>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-5 py-3.5 text-xs font-semibold text-slate-500" dir="ltr">
                       {branch.phone || '—'}
                     </td>

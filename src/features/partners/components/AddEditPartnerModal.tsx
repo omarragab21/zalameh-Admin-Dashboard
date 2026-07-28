@@ -297,53 +297,26 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                     </span>
                   </div>
 
-                  {/* Password Input Box */}
-                  <div className="relative flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-xs">
-                    {/* Password Display Field */}
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      readOnly
-                      value={password}
-                      className={`w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none dir-ltr text-left tracking-widest ${
-                        isAr ? 'pl-24 pr-3' : 'pr-24 pl-3'
-                      }`}
-                    />
+                  {/* Password Field Row */}
+                  <div className="flex items-center gap-2">
+                    {/* Password Input Box (ONLY Eye Icon inside) */}
+                    <div className="relative flex-1 flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2.5 shadow-2xs focus-within:border-[#d83f2a] transition">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        readOnly
+                        value={password}
+                        className={`w-full bg-transparent text-sm font-extrabold text-slate-800 focus:outline-none dir-ltr text-left tracking-widest ${
+                          isAr ? 'pl-8 pr-2' : 'pr-8 pl-2'
+                        }`}
+                      />
 
-                    {/* Action buttons inside field */}
-                    <div className={`absolute flex items-center gap-1 ${isAr ? 'left-2' : 'right-2'}`}>
-                      {/* Copy Password Button */}
-                      <button
-                        type="button"
-                        onClick={handleCopyPassword}
-                        className="w-8 h-8 rounded-lg bg-[#d83f2a] hover:bg-[#c03320] text-white flex items-center justify-center transition cursor-pointer shadow-xs"
-                        title={copied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ كلمة المرور' : 'Copy Password')}
-                      >
-                        {copied ? (
-                          <span className="text-[10px] font-bold">{isAr ? 'تم' : 'Copied'}</span>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                          </svg>
-                        )}
-                      </button>
-
-                      {/* Refresh / Regenerate Button */}
-                      <button
-                        type="button"
-                        onClick={generateNewPassword}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                        title={isAr ? 'توليد كلمة مرور جديدة' : 'Generate New Password'}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                      </button>
-
-                      {/* Eye Show/Hide Toggle */}
+                      {/* ONLY Eye Show/Hide Toggle inside field */}
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                        className={`absolute text-slate-400 hover:text-slate-700 p-1 rounded-lg transition cursor-pointer ${
+                          isAr ? 'left-2.5' : 'right-2.5'
+                        }`}
                         title={showPassword ? (isAr ? 'إخفاء كلمة المرور' : 'Hide Password') : (isAr ? 'إظهار كلمة المرور' : 'Show Password')}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,6 +325,31 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                         </svg>
                       </button>
                     </div>
+
+                    {/* Action 1 Outside: Recycle / Regenerate Password Button */}
+                    <button
+                      type="button"
+                      onClick={generateNewPassword}
+                      className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition cursor-pointer shrink-0 shadow-2xs"
+                      title={isAr ? 'توليد كلمة مرور جديدة' : 'Generate New Password'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+
+                    {/* Action 2 Outside: Copy Password Button */}
+                    <button
+                      type="button"
+                      onClick={handleCopyPassword}
+                      className="px-4 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c03320] text-white font-extrabold text-xs shadow-md shadow-[#d83f2a]/20 flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                      title={copied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ كلمة المرور' : 'Copy Password')}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                      </svg>
+                      <span>{copied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ' : 'Copy')}</span>
+                    </button>
                   </div>
 
                   <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -363,7 +361,7 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
               </div>
 
               {/* Partner Status Selection Section (حالة الشريك) */}
-              <div className="space-y-2">
+              <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-2">
                 <label className="block text-xs font-extrabold text-slate-800">
                   {isAr ? 'حالة الشريك' : 'Partner Status'}
                 </label>
@@ -372,13 +370,13 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setStatus('active')}
-                    className={`py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`py-2.5 px-4 rounded-full text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
                       status === 'active'
-                        ? 'border-2 border-emerald-500 bg-emerald-50/60 text-emerald-700 shadow-xs'
+                        ? 'border-2 border-emerald-500 bg-emerald-50 text-emerald-700 shadow-xs'
                         : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     {isAr ? 'نشط' : 'Active'}
                   </button>
 
@@ -386,13 +384,13 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setStatus('inactive')}
-                    className={`py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`py-2.5 px-4 rounded-full text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
                       status === 'inactive'
                         ? 'border-2 border-slate-400 bg-slate-100 text-slate-700 shadow-xs'
                         : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
                     {isAr ? 'غير نشط' : 'Inactive'}
                   </button>
 
@@ -400,14 +398,14 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setStatus('pending')}
-                    className={`py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`py-2.5 px-4 rounded-full text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
                       status === 'pending'
-                        ? 'border-2 border-amber-400 bg-amber-50/60 text-amber-700 shadow-xs'
+                        ? 'border-2 border-amber-400 bg-amber-50 text-amber-700 shadow-xs'
                         : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    {isAr ? 'قيد المراجعة' : 'Pending Review'}
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    {isAr ? 'قيد المراجعة' : 'Pending'}
                   </button>
                 </div>
               </div>

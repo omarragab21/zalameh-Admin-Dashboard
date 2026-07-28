@@ -90,17 +90,17 @@ export const PartnersTable: React.FC<PartnersTableProps> = ({
       <table className="w-full text-right border-collapse">
         <thead>
           <tr className="bg-slate-50/80 border-b border-slate-200/80 text-slate-500 text-xs font-bold">
-            <th className="py-4 px-6">الشريك</th>
-            <th className="py-4 px-6">الباقة</th>
-            <th className="py-4 px-6">الحالة</th>
-            <th className="py-4 px-6 text-center">الإجراءات</th>
+            <th className="py-3.5 px-6">الشريك</th>
+            <th className="py-3.5 px-6">الباقة</th>
+            <th className="py-3.5 px-6">الحالة</th>
+            <th className="py-3.5 px-6 text-center">الإجراءات</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 text-sm">
           {partners.map((partner) => (
             <tr key={partner.id} className="hover:bg-slate-50/60 transition group">
               {/* Partner Info */}
-              <td className="py-4 px-6">
+              <td className="py-3.5 px-6">
                 <div className="flex items-center gap-3">
                   {partner.avatarUrl ? (
                     <img
@@ -125,23 +125,23 @@ export const PartnersTable: React.FC<PartnersTableProps> = ({
               </td>
 
               {/* Plan */}
-              <td className="py-4 px-6">
+              <td className="py-3.5 px-6">
                 {getPlanBadge(partner.plan, partner.planName)}
               </td>
 
               {/* Status */}
-              <td className="py-4 px-6">
+              <td className="py-3.5 px-6">
                 {getStatusBadge(partner.status)}
               </td>
 
               {/* Actions */}
-              <td className="py-4 px-6">
+              <td className="py-3.5 px-6">
                 <div className="flex items-center justify-center gap-1.5">
                   {/* View Details / Brands (Eye Icon) */}
                   <button
                     onClick={() => onViewBrands(partner)}
                     title="عرض العلامات التجارية والتفاصيل"
-                    className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer flex items-center justify-center"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -149,34 +149,42 @@ export const PartnersTable: React.FC<PartnersTableProps> = ({
                     </svg>
                   </button>
 
-                  {/* Edit Partner (Pencil Icon) */}
+                  {/* Edit Partner (Outlined Pen Icon) */}
                   <button
                     onClick={() => onEditPartner(partner)}
                     title="تعديل الشريك"
-                    className="p-2 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer flex items-center justify-center"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 210.3H3v-3.572L16.732 3.732z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
                   </button>
 
-                  {/* Suspend / Change Status (Tag Icon) */}
-                  <button
-                    onClick={() => onSuspendPartner(partner)}
-                    title={partner.status === 'active' ? 'تعليق حساب الشريك' : 'تفعيل الشريك'}
-                    className="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition cursor-pointer"
+                  {/* Suspend / Change Status Toggle Switch */}
+                  <div
+                    className="p-1.5 flex items-center justify-center cursor-pointer"
+                    title={partner.status === 'active' ? 'إيقاف مؤقت / تعليق حساب الشريك' : 'تفعيل حساب الشريك'}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2" />
-                    </svg>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onSuspendPartner(partner)}
+                      className={`relative inline-flex items-center h-[18px] w-8 p-[2px] shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${
+                        partner.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          partner.status === 'active' ? '-translate-x-3.5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-                  {/* Offers Management (Ribbon / Discount Icon) */}
+                  {/* Offers Management (Tag Icon) */}
                   <button
                     onClick={() => onManageOffers(partner)}
                     title="إدارة العروض والخصومات"
-                    className="p-2 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition cursor-pointer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition cursor-pointer flex items-center justify-center"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -187,7 +195,7 @@ export const PartnersTable: React.FC<PartnersTableProps> = ({
                   <button
                     onClick={() => onDeletePartner(partner)}
                     title="حذف الشريك"
-                    className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer flex items-center justify-center"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

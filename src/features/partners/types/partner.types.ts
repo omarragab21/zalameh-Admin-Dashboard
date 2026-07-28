@@ -133,6 +133,7 @@ export interface SocialLinks {
   twitter?: string;
   snapchat?: string;
   youtube?: string;
+  whatsapp?: string;
 }
 
 export interface Partner {

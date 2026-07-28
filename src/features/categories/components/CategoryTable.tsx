@@ -343,27 +343,32 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
       </div>
 
       {/* Table Footer with Pagination */}
-      <div className="p-4 bg-slate-50/50 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-semibold">
+      <div className="p-4 bg-slate-50/50 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-semibold" dir="rtl">
         <div>
           عرض {totalItems === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + itemsPerPage, totalItems)} من {totalItems} فئة رئيسية
         </div>
 
-        <div className="flex items-center gap-1.5" dir="ltr">
+        <div className="flex items-center gap-1.5" dir="rtl">
+          {/* Previous Page Button */}
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition cursor-pointer"
+            title="الصفحة السابقة"
+            className="w-8 h-8 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition cursor-pointer"
           >
-            &lt;
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
 
+          {/* Page Numbers */}
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
             const isActive = pageNum === currentPage;
             return (
               <button
                 key={pageNum}
                 onClick={() => setCurrentPage(pageNum)}
-                className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center transition cursor-pointer ${
+                className={`w-8 h-8 rounded-xl font-extrabold text-xs flex items-center justify-center transition cursor-pointer ${
                   isActive
                     ? 'bg-[#d83f2a] text-white shadow-xs shadow-[#d83f2a]/30'
                     : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -374,12 +379,16 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
             );
           })}
 
+          {/* Next Page Button */}
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition cursor-pointer"
+            title="الصفحة التالية"
+            className="w-8 h-8 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition cursor-pointer"
           >
-            &gt;
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
         </div>
       </div>

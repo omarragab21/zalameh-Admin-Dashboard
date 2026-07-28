@@ -759,7 +759,12 @@ export const PartnersPage: React.FC = () => {
             setEditingPartner(partner);
             setIsAddEditPartnerOpen(true);
           }}
-          onSuspendPartner={(partner) => setPartnerToSuspend(partner)}
+          onSuspendPartner={(partner) => {
+            const newStatus = partner.status === 'active' ? 'inactive' : 'active';
+            setPartners((prev) =>
+              prev.map((p) => (p.id === partner.id ? { ...p, status: newStatus } : p))
+            );
+          }}
           onManageOffers={(partner) => {
             setSelectedPartnerForBrands(partner);
             if (partner.brands && partner.brands.length > 0) {
