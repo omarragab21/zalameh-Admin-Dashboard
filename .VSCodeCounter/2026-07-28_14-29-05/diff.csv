@@ -1,0 +1,29 @@
+"filename", "language", "TypeScript JSX", "TypeScript", "comment", "blank", "total"
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/dashboard/pages/DashboardPage.tsx", "TypeScript JSX", 6, 0, 0, 0, 6
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/components/AddEditPackageModal.tsx", "TypeScript JSX", 514, 0, 23, 50, 587
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/components/PackageDetailsModal.tsx", "TypeScript JSX", 148, 0, 8, 14, 170
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/components/PackageFilterBar.tsx", "TypeScript JSX", 63, 0, 4, 5, 72
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/components/PackageStatsHeader.tsx", "TypeScript JSX", 49, 0, 3, 5, 57
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/components/PackagesTable.tsx", "TypeScript JSX", 137, 0, 9, 13, 159
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/data/mockPackages.ts", "TypeScript", 0, 110, 0, 2, 112
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/pages/PackagesPage.tsx", "TypeScript JSX", 112, 0, 12, 13, 137
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/types/package.types.ts", "TypeScript", 0, 30, 0, 5, 35
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditBranchModal.tsx", "TypeScript JSX", 189, 0, 7, 13, 209
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditBrandModal.tsx", "TypeScript JSX", 423, 0, 7, 19, 449
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditJobModal.tsx", "TypeScript JSX", 347, 0, 13, 29, 389
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditOfferModal.tsx", "TypeScript JSX", 371, 0, 10, 19, 400
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditPartnerModal.tsx", "TypeScript JSX", 577, 0, 22, 34, 633
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditPromoCodeModal.tsx", "TypeScript JSX", 341, 0, 13, 27, 381
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/BrandDetailView.tsx", "TypeScript JSX", 789, 0, 12, 25, 826
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/BrandExtraInfoView.tsx", "TypeScript JSX", 407, 0, 25, 34, 466
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/DeletePartnerModal.tsx", "TypeScript JSX", 46, 0, 0, 5, 51
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/PartnerBrandsView.tsx", "TypeScript JSX", 228, 0, 8, 14, 250
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/PartnerFilterBar.tsx", "TypeScript JSX", 61, 0, 3, 5, 69
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/PartnerSocialLinks.tsx", "TypeScript JSX", 229, 0, 2, 14, 245
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/PartnerStatsHeader.tsx", "TypeScript JSX", 62, 0, 4, 6, 72
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/PartnersTable.tsx", "TypeScript JSX", 183, 0, 9, 13, 205
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/SuspendPartnerModal.tsx", "TypeScript JSX", 50, 0, 0, 6, 56
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/data/mockPartners.ts", "TypeScript", 0, 165, 0, 2, 167
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/pages/PartnersPage.tsx", "TypeScript JSX", 679, 0, 35, 83, 797
+"/Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/types/partner.types.ts", "TypeScript", 0, 139, 0, 19, 158
+"Total", "-", 6011, 444, 229, 474, 7158
