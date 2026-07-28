@@ -64,11 +64,13 @@ const socialFields: { key: keyof SocialLinks; label: string; placeholder: string
     key: 'snapchat',
     label: 'سناب شات',
     placeholder: 'https://snapchat.com/add/...',
-    colorClass: 'bg-[#FFFC00] text-white shadow-xs',
+    colorClass: 'bg-transparent shadow-xs p-0 overflow-hidden',
     icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="white" stroke="black" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12.042 2.875c-3.056 0-5.583 2.453-5.583 5.583 0 .509.07 1.018.204 1.51-.52.276-.882.809-1.011 1.465-.128.643.011 1.289.387 1.806.212.296.489.532.805.689-.133.401-.318.781-.553 1.129-.437.654-1.008 1.186-1.696 1.577-.465.266-.72.763-.637 1.289.083.527.479.933.997 1.025 1.123.199 2.271.187 3.398-.032.536-.104 1.079-.158 1.621-.158.542 0 1.085.054 1.621.158 1.127.219 2.275.231 3.398.032.518-.092.914-.498.997-1.025.083-.526-.172-1.023-.637-1.289-.688-.391-1.259-.923-1.696-1.577-.235-.348-.42-.728-.553-1.129.316-.157.593-.393.805-.689.376-.517.505-1.163.387-1.806-.129-.656-.491-1.189-1.011-1.465.134-.492.204-1.001.204-1.51 0-3.13-2.527-5.583-5.583-5.583z" />
-      </svg>
+      <img
+        src="/snapchat.svg"
+        alt="Snapchat"
+        className="w-full h-full object-cover rounded-full"
+      />
     ),
   },
   {
