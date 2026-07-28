@@ -17,7 +17,7 @@ import { PackagesPage } from '../../packages/pages/PackagesPage';
 
 export const DashboardPage: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeItem, setActiveItem] = useState('content');
+  const [activeItem, setActiveItem] = useState('dashboard');
 
   const navTitles: Record<string, string> = {
     dashboard: 'لوحة القيادة',
