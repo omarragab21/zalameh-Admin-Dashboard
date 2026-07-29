@@ -20,6 +20,7 @@ export const AddEditBranchModal: React.FC<AddEditBranchModalProps> = ({
   const [phone, setPhone] = useState('');
   const [mapUrl, setMapUrl] = useState('');
   const [status, setStatus] = useState<BranchStatus>('active');
+  const [isMainBranch, setIsMainBranch] = useState(false);
 
   useEffect(() => {
     if (editingBranch) {
@@ -29,6 +30,7 @@ export const AddEditBranchModal: React.FC<AddEditBranchModalProps> = ({
       setPhone(editingBranch.phone || '');
       setMapUrl(editingBranch.mapUrl || '');
       setStatus(editingBranch.status || 'active');
+      setIsMainBranch(editingBranch.isMainBranch || false);
     } else {
       setNameAr('');
       setNameEn('');
@@ -36,6 +38,7 @@ export const AddEditBranchModal: React.FC<AddEditBranchModalProps> = ({
       setPhone('');
       setMapUrl('');
       setStatus('active');
+      setIsMainBranch(false);
     }
   }, [editingBranch, isOpen]);
 
@@ -52,6 +55,7 @@ export const AddEditBranchModal: React.FC<AddEditBranchModalProps> = ({
       phone,
       mapUrl: mapUrl || undefined,
       status,
+      isMainBranch,
     });
     onClose();
   };
@@ -87,6 +91,42 @@ export const AddEditBranchModal: React.FC<AddEditBranchModalProps> = ({
 
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* Main Branch Flag Selection Card */}
+          <div
+            onClick={() => setIsMainBranch(!isMainBranch)}
+            className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between select-none ${
+              isMainBranch
+                ? 'border-amber-400 bg-amber-50/60 shadow-xs'
+                : 'border-slate-200 bg-slate-50/40 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
+                isMainBranch ? 'bg-amber-100 text-amber-600' : 'bg-slate-200/60 text-slate-400'
+              }`}>
+                ⭐
+              </div>
+              <div>
+                <span className="font-extrabold text-xs text-slate-900 block">
+                  تعيين كفرع رئيسي (Primary Branch)
+                </span>
+                <span className="text-[10px] text-slate-500 font-semibold block">
+                  سيكون هذا الفرع المقر الرئيسي للعلامة التجارية
+                </span>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={isMainBranch}
+              onChange={(e) => {
+                e.stopPropagation();
+                setIsMainBranch(e.target.checked);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4.5 h-4.5 text-amber-500 accent-amber-500 rounded cursor-pointer"
+            />
+          </div>
+
           {/* Branch Names */}
           <div className="grid grid-cols-2 gap-3">
             <div>

@@ -31,6 +31,7 @@ export interface Branch {
   phone: string;
   mapUrl?: string;
   status: BranchStatus;
+  isMainBranch?: boolean;
 }
 
 export type PromoCodeStatus = 'active' | 'inactive';
@@ -78,6 +79,23 @@ export interface JobPosition {
   branchIds?: string[];
 }
 
+export type MenuItemUnitType = 'quantity' | 'count'; // كمية | عدد
+export type MenuItemStatus = 'available' | 'unavailable'; // متاح | غير متاح
+
+export interface MenuItem {
+  id: string;
+  brandId: string;
+  nameAr: string;
+  nameEn?: string;
+  category: string; // e.g. توصيل, وجبات, باقات, عصائر
+  price: number;
+  imageUrl?: string;
+  unitType: MenuItemUnitType; // 'quantity' | 'count' ('كمية' | 'عدد')
+  status: MenuItemStatus; // 'available' | 'unavailable'
+  publishingScope: PublishingScope; // 'all_branches' | 'specific_branch'
+  branchId?: string;
+}
+
 export interface Brand {
   id: string;
   partnerId: string;
@@ -97,6 +115,7 @@ export interface Brand {
   branches?: Branch[];
   promoCodes?: PromoCode[];
   jobs?: JobPosition[];
+  menuItems?: MenuItem[];
   socialLinks?: SocialLinks;
   extraInfo?: BrandExtraInfo;
 }

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { Partner, Brand, BrandStatus, Branch, BranchStatus, Offer, PartnerFilterStatus, BrandExtraInfo, PromoCode, JobPosition } from '../types/partner.types';
+import type { Partner, Brand, BrandStatus, Branch, BranchStatus, Offer, PartnerFilterStatus, BrandExtraInfo, PromoCode, JobPosition, MenuItem } from '../types/partner.types';
 import { initialPartners } from '../data/mockPartners';
 import { PartnerStatsHeader } from '../components/PartnerStatsHeader';
 import { PartnerFilterBar } from '../components/PartnerFilterBar';
@@ -12,6 +12,7 @@ import { AddEditOfferModal } from '../components/AddEditOfferModal';
 import { AddEditBranchModal } from '../components/AddEditBranchModal';
 import { AddEditPromoCodeModal } from '../components/AddEditPromoCodeModal';
 import { AddEditJobModal } from '../components/AddEditJobModal';
+import { AddEditMenuItemModal } from '../components/AddEditMenuItemModal';
 import { SuspendPartnerModal } from '../components/SuspendPartnerModal';
 import { DeletePartnerModal } from '../components/DeletePartnerModal';
 
@@ -50,6 +51,10 @@ export const PartnersPage: React.FC = () => {
   // Job Modals state
   const [isAddEditJobOpen, setIsAddEditJobOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<JobPosition | null>(null);
+
+  // Menu Item Modals state
+  const [isAddEditMenuItemOpen, setIsAddEditMenuItemOpen] = useState(false);
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
 
   // Statistics calculation
   const totalCount = partners.length;
@@ -348,7 +353,12 @@ export const PartnersPage: React.FC = () => {
 
     if (editingBranch) {
       updateActiveBrandBranches((branches) =>
-        branches.map((b) => (b.id === editingBranch.id ? { ...b, ...branchData } : b))
+        branches.map((b) => {
+          if (b.id === editingBranch.id) {
+            return { ...b, ...branchData };
+          }
+          return branchData.isMainBranch ? { ...b, isMainBranch: false } : b;
+        })
       );
     } else {
       const newBranch: Branch = {
@@ -360,8 +370,14 @@ export const PartnersPage: React.FC = () => {
         phone: branchData.phone || '',
         mapUrl: branchData.mapUrl,
         status: branchData.status || 'active',
+        isMainBranch: branchData.isMainBranch || false,
       };
-      updateActiveBrandBranches((branches) => [...branches, newBranch]);
+      updateActiveBrandBranches((branches) => {
+        if (branchData.isMainBranch) {
+          return [...branches.map((b) => ({ ...b, isMainBranch: false })), newBranch];
+        }
+        return [...branches, newBranch];
+      });
     }
   };
 
@@ -595,6 +611,142 @@ export const PartnersPage: React.FC = () => {
     );
   };
 
+  // Menu Item Operations
+  const handleSaveMenuItem = (itemData: Partial<MenuItem>) => {
+    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
+
+    setPartners((prev) =>
+      prev.map((p) => {
+        if (p.id !== selectedPartnerForBrands.id) return p;
+
+        const updatedBrands = (p.brands || []).map((b) => {
+          if (b.id !== activeBrandForOffers.id) return b;
+
+          let currentMenuItems = [...(b.menuItems || [])];
+          if (currentMenuItems.length === 0) {
+            currentMenuItems = [
+              {
+                id: 'menu-1',
+                brandId: b.id,
+                nameAr: 'خدمة التوصيل السريع',
+                category: 'توصيل',
+                price: 25,
+                unitType: 'count',
+                status: 'available',
+                publishingScope: 'all_branches',
+              },
+              {
+                id: 'menu-2',
+                brandId: b.id,
+                nameAr: 'باقة التوصيل الشهرية',
+                category: 'باقات',
+                price: 199,
+                unitType: 'quantity',
+                status: 'available',
+                publishingScope: 'all_branches',
+              },
+              {
+                id: 'menu-3',
+                brandId: b.id,
+                nameAr: 'توصيل دولي',
+                category: 'توصيل',
+                price: 150,
+                unitType: 'count',
+                status: 'unavailable',
+                publishingScope: 'all_branches',
+              },
+            ];
+          }
+
+          if (editingMenuItem) {
+            currentMenuItems = currentMenuItems.map((mi) =>
+              mi.id === editingMenuItem.id ? { ...mi, ...itemData } : mi
+            );
+          } else {
+            const newMenuItem: MenuItem = {
+              id: `menu-${Date.now()}`,
+              brandId: b.id,
+              nameAr: itemData.nameAr || 'عنصر جديد',
+              nameEn: itemData.nameEn,
+              category: itemData.category || 'توصيل',
+              price: itemData.price || 0,
+              imageUrl: itemData.imageUrl,
+              unitType: itemData.unitType || 'count',
+              status: itemData.status || 'available',
+              publishingScope: itemData.publishingScope || 'all_branches',
+              branchId: itemData.branchId,
+            };
+            currentMenuItems.push(newMenuItem);
+          }
+
+          const updatedBrand = { ...b, menuItems: currentMenuItems };
+          setActiveBrandForOffers(updatedBrand);
+          return updatedBrand;
+        });
+
+        const updatedPartner = { ...p, brands: updatedBrands };
+        setSelectedPartnerForBrands(updatedPartner);
+        return updatedPartner;
+      })
+    );
+  };
+
+  const handleDeleteMenuItem = (itemId: string) => {
+    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
+
+    setPartners((prev) =>
+      prev.map((p) => {
+        if (p.id !== selectedPartnerForBrands.id) return p;
+
+        const updatedBrands = (p.brands || []).map((b) => {
+          if (b.id !== activeBrandForOffers.id) return b;
+
+          let currentMenuItems = b.menuItems && b.menuItems.length > 0 ? b.menuItems : [
+            {
+              id: 'menu-1',
+              brandId: b.id,
+              nameAr: 'خدمة التوصيل السريع',
+              category: 'توصيل',
+              price: 25,
+              unitType: 'count' as const,
+              status: 'available' as const,
+              publishingScope: 'all_branches' as const,
+            },
+            {
+              id: 'menu-2',
+              brandId: b.id,
+              nameAr: 'باقة التوصيل الشهرية',
+              category: 'باقات',
+              price: 199,
+              unitType: 'quantity' as const,
+              status: 'available' as const,
+              publishingScope: 'all_branches' as const,
+            },
+            {
+              id: 'menu-3',
+              brandId: b.id,
+              nameAr: 'توصيل دولي',
+              category: 'توصيل',
+              price: 150,
+              unitType: 'count' as const,
+              status: 'unavailable' as const,
+              publishingScope: 'all_branches' as const,
+            },
+          ];
+
+          const updatedMenuItems = currentMenuItems.filter((mi) => mi.id !== itemId);
+          const updatedBrand = { ...b, menuItems: updatedMenuItems };
+          setActiveBrandForOffers(updatedBrand);
+          return updatedBrand;
+        });
+
+        const updatedPartner = { ...p, brands: updatedBrands };
+        setSelectedPartnerForBrands(updatedPartner);
+        return updatedPartner;
+      })
+    );
+  };
+
   const handleToggleBranchStatus = (branch: Branch) => {
     const newStatus: BranchStatus = branch.status === 'active' ? 'inactive' : 'active';
     updateActiveBrandBranches((branches) =>
@@ -658,6 +810,15 @@ export const PartnersPage: React.FC = () => {
               setIsAddEditJobOpen(true);
             }}
             onDeleteJob={handleDeleteJob}
+            onAddMenuItem={() => {
+              setEditingMenuItem(null);
+              setIsAddEditMenuItemOpen(true);
+            }}
+            onEditMenuItem={(item) => {
+              setEditingMenuItem(item);
+              setIsAddEditMenuItemOpen(true);
+            }}
+            onDeleteMenuItem={handleDeleteMenuItem}
           />
         ) : (
           <PartnerBrandsView
@@ -720,6 +881,15 @@ export const PartnersPage: React.FC = () => {
           onClose={() => setIsAddEditJobOpen(false)}
           onSave={handleSaveJob}
           editingJob={editingJob}
+          branches={activeBrandForOffers?.branches || []}
+        />
+
+        {/* Add / Edit Menu Item Modal */}
+        <AddEditMenuItemModal
+          isOpen={isAddEditMenuItemOpen}
+          onClose={() => setIsAddEditMenuItemOpen(false)}
+          onSave={handleSaveMenuItem}
+          editingItem={editingMenuItem}
           branches={activeBrandForOffers?.branches || []}
         />
       </div>

@@ -14,6 +14,7 @@ import { CategoriesPage } from '../../categories/pages/CategoriesPage';
 import { ContentManagementPage } from '../../content/pages/ContentManagementPage';
 import { PartnersPage } from '../../partners/pages/PartnersPage';
 import { PackagesPage } from '../../packages/pages/PackagesPage';
+import { AdsPage } from '../../ads/pages/AdsPage';
 
 export const DashboardPage: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -83,6 +84,8 @@ export const DashboardPage: React.FC = () => {
             <ContentManagementPage />
           ) : activeItem === 'packages' ? (
             <PackagesPage />
+          ) : activeItem === 'ads' ? (
+            <AdsPage />
           ) : activeItem === 'finance' ? (
             <FinancePage />
           ) : activeItem === 'profile' ? (

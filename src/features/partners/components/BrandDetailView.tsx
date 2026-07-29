@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Brand, Branch, Offer, BrandExtraInfo, PromoCode, JobPosition } from '../types/partner.types';
+import type { Brand, Branch, Offer, BrandExtraInfo, PromoCode, JobPosition, MenuItem } from '../types/partner.types';
 import { PartnerSocialLinks } from './PartnerSocialLinks';
 import { BrandExtraInfoView } from './BrandExtraInfoView';
 
@@ -24,6 +24,9 @@ interface BrandDetailViewProps {
   onAddJob?: () => void;
   onEditJob?: (job: JobPosition) => void;
   onDeleteJob?: (jobId: string) => void;
+  onAddMenuItem?: () => void;
+  onEditMenuItem?: (item: MenuItem) => void;
+  onDeleteMenuItem?: (itemId: string) => void;
 }
 
 type DetailTab =
@@ -111,6 +114,9 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
   onAddJob,
   onEditJob,
   onDeleteJob,
+  onAddMenuItem,
+  onEditMenuItem,
+  onDeleteMenuItem,
 }) => {
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const offers = brand.offers || [];
@@ -154,6 +160,39 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
       contactMethods: ['phone' as const],
       status: 'closed' as const,
       publishingScope: 'all_branches' as const,
+    },
+  ];
+
+  const menuItems: MenuItem[] = brand.menuItems && brand.menuItems.length > 0 ? brand.menuItems : [
+    {
+      id: 'menu-1',
+      brandId: brand.id,
+      nameAr: 'خدمة التوصيل السريع',
+      category: 'توصيل',
+      price: 25,
+      unitType: 'count',
+      status: 'available',
+      publishingScope: 'all_branches',
+    },
+    {
+      id: 'menu-2',
+      brandId: brand.id,
+      nameAr: 'باقة التوصيل الشهرية',
+      category: 'باقات',
+      price: 199,
+      unitType: 'quantity',
+      status: 'available',
+      publishingScope: 'all_branches',
+    },
+    {
+      id: 'menu-3',
+      brandId: brand.id,
+      nameAr: 'توصيل دولي',
+      category: 'توصيل',
+      price: 150,
+      unitType: 'count',
+      status: 'unavailable',
+      publishingScope: 'all_branches',
     },
   ];
 
@@ -549,7 +588,14 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         <div>
-                          <p className="text-xs font-extrabold text-slate-900">{branch.nameAr}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-extrabold text-slate-900">{branch.nameAr}</p>
+                            {branch.isMainBranch && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
+                                ⭐ فرع رئيسي
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[10px] font-semibold text-slate-400" dir="ltr">{branch.nameEn}</p>
                         </div>
                       </div>
@@ -820,6 +866,113 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
         </div>
       )}
 
+      {activeTab === 'menu' && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
+          {/* Menu Header matching Screenshot 2 */}
+          <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
+            <h3 className="text-base font-extrabold text-slate-900">القائمة</h3>
+            <button
+              onClick={onAddMenuItem}
+              className="px-4.5 py-2.5 rounded-xl bg-[#10b981] hover:bg-emerald-600 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition flex items-center gap-2 cursor-pointer"
+            >
+              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>إضافة عنصر</span>
+            </button>
+          </div>
+
+          {menuItems.length === 0 ? (
+            <div className="p-12 text-center flex flex-col items-center justify-center border-t border-slate-100">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h4 className="text-sm font-extrabold text-slate-900 mb-1">لا توجد عناصر في القائمة بعد</h4>
+              <p className="text-xs text-slate-400">أضف أول عنصر للقائمة لهذه العلامة التجارية.</p>
+            </div>
+          ) : (
+            <table className="w-full text-right">
+              <thead>
+                <tr className="border-t border-b border-slate-100 bg-slate-50/60 text-slate-400 font-bold text-[11px]">
+                  <th className="px-5 py-3">الاسم</th>
+                  <th className="px-5 py-3">الفئة</th>
+                  <th className="px-5 py-3">السعر</th>
+                  <th className="px-5 py-3">الحالة</th>
+                  <th className="px-5 py-3">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {menuItems.map((item) => (
+                  <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.nameAr} className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center shrink-0 text-xs font-bold">
+                            🍽️
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-xs font-extrabold text-slate-900">{item.nameAr}</p>
+                          <span className="text-[10px] text-slate-400 font-semibold">
+                            النوع: {item.unitType === 'quantity' ? 'كمية' : 'عدد'}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200/60 w-fit inline-block">
+                        {item.category || 'توصيل'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-xs font-extrabold text-emerald-600" dir="ltr">
+                      {item.price} د.أ
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${
+                          item.status === 'available'
+                            ? 'bg-emerald-50 text-emerald-600'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'available' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                        {item.status === 'available' ? 'متاح' : 'غير متاح'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onEditMenuItem && onEditMenuItem(item)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
+                          title="تعديل العنصر"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => onDeleteMenuItem && onDeleteMenuItem(item.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                          title="حذف العنصر"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       {activeTab === 'contact' && (
         <PartnerSocialLinks
           title="مواقع التواصل"
@@ -843,7 +996,8 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
         activeTab !== 'contact' &&
         activeTab !== 'extraInfo' &&
         activeTab !== 'promoCodes' &&
-        activeTab !== 'jobs' && (
+        activeTab !== 'jobs' &&
+        activeTab !== 'menu' && (
           <div className="bg-white rounded-2xl border border-slate-200/80 p-16 text-center">
             <p className="text-sm font-bold text-slate-400">لا توجد بيانات متاحة حالياً</p>
           </div>
