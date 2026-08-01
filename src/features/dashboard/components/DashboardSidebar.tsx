@@ -13,6 +13,22 @@ export const DashboardSidebar: React.FC<SidebarProps> = ({
   activeItem,
   onSelectItem,
 }) => {
+  const [isFinanceExpanded, setIsFinanceExpanded] = React.useState(true);
+
+  React.useEffect(() => {
+    if (activeItem.startsWith('finance')) {
+      setIsFinanceExpanded(true);
+    }
+  }, [activeItem]);
+
+  const financeSubItems: { id: string; name: string; badge?: string }[] = [
+    { id: 'finance_overview', name: 'النظرة العامة' },
+    { id: 'finance_subscriptions', name: 'الاشتراكات' },
+    { id: 'finance_renewals', name: 'التجديدات القادمة' },
+    { id: 'finance_ledger', name: 'السجل المالي' },
+    { id: 'finance_reports', name: 'التقارير' },
+  ];
+
   const mainNav = [
     { id: 'dashboard', name: 'لوحة القيادة', icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -44,11 +60,6 @@ export const DashboardSidebar: React.FC<SidebarProps> = ({
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.684A1.761 1.761 0 013 12V8a1.76 1.76 0 012.436-1.684l.43.14M11 5.882L15 4h.01A2.5 2.5 0 0118 6.5v11a2.5 2.5 0 01-2.99 2.45L11 18.118" />
       </svg>
     )},
-    { id: 'finance', name: 'الإدارة المالية', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-      </svg>
-    )},
   ];
 
   const settingsNav = [
@@ -70,13 +81,15 @@ export const DashboardSidebar: React.FC<SidebarProps> = ({
     )},
   ];
 
+  const isFinanceActive = activeItem.startsWith('finance');
+
   return (
     <aside
       className={`bg-[#181c28] text-slate-300 flex flex-col transition-all duration-300 z-40 border-l border-slate-800 shrink-0 ${
         isCollapsed ? 'w-20' : 'w-64'
       }`}
     >
-      {/* Header / Brand Logo - Strictly Square Badge */}
+      {/* Header / Brand Logo */}
       <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800/80">
         {!isCollapsed && (
           <div className="flex items-center gap-3">
@@ -87,7 +100,10 @@ export const DashboardSidebar: React.FC<SidebarProps> = ({
                 <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <span className="font-extrabold text-lg text-white tracking-wide">زلمة</span>
+            <div>
+              <span className="font-extrabold text-lg text-white tracking-wide block leading-tight">زلمة</span>
+              <span className="text-[10px] text-slate-400 font-medium block">نظام الإدارة المالية</span>
+            </div>
           </div>
         )}
 
@@ -142,6 +158,73 @@ export const DashboardSidebar: React.FC<SidebarProps> = ({
                 </button>
               );
             })}
+
+            {/* Accordion Item: الإدارة المالية */}
+            <div>
+              <button
+                onClick={() => {
+                  if (isCollapsed) onToggle();
+                  setIsFinanceExpanded(!isFinanceExpanded);
+                  if (!isFinanceActive) {
+                    onSelectItem('finance_overview');
+                  }
+                }}
+                title={isCollapsed ? 'الإدارة المالية' : undefined}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                  isFinanceActive
+                    ? 'bg-[#d83f2a]/15 text-[#d83f2a] border-r-4 border-[#d83f2a]'
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={isFinanceActive ? 'text-[#d83f2a]' : 'text-slate-400'}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  {!isCollapsed && <span>الإدارة المالية</span>}
+                </div>
+                {!isCollapsed && (
+                  <svg
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isFinanceExpanded ? 'rotate-180 text-[#d83f2a]' : 'text-slate-500'
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Subcategories accordion */}
+              {!isCollapsed && isFinanceExpanded && (
+                <div className="mr-4 mt-1 pr-2 border-r border-slate-700/60 space-y-0.5">
+                  {financeSubItems.map((sub) => {
+                    const isSubActive = activeItem === sub.id || (activeItem === 'finance' && sub.id === 'finance_overview');
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => onSelectItem(sub.id)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          isSubActive
+                            ? 'bg-[#d83f2a]/15 text-[#d83f2a] font-extrabold'
+                            : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+                        }`}
+                      >
+                        <span>{sub.name}</span>
+                        {sub.badge && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#d83f2a] text-white font-extrabold">
+                            {sub.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

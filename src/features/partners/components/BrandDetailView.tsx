@@ -772,8 +772,13 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
       {activeTab === 'jobs' && (
         <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
           {/* Jobs Header */}
-          <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
-            <h3 className="text-base font-extrabold text-slate-900">الوظائف</h3>
+          <div className="p-4 sm:p-5 flex items-center justify-between gap-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">الوظائف والفرص الشاغرة</h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                {jobs.length > 0 ? `${jobs.length} وظيفة مسجلة` : 'لا توجد وظائف مسجلة'}
+              </p>
+            </div>
             <button
               onClick={onAddJob}
               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5 cursor-pointer"
@@ -786,7 +791,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
           </div>
 
           {jobs.length === 0 ? (
-            <div className="p-12 text-center flex flex-col items-center justify-center border-t border-slate-100">
+            <div className="p-12 text-center flex flex-col items-center justify-center">
               <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -796,60 +801,72 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
               <p className="text-xs text-slate-400">أضف أول وظيفة لهذه العلامة التجارية لتظهر للمتقدمين.</p>
             </div>
           ) : (
-            <table className="w-full text-right">
-              <thead>
-                <tr className="border-t border-b border-slate-100 bg-slate-50/60">
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">المسمى الوظيفي</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">نوع التوظيف</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الحالة</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map((job) => (
-                  <tr key={job.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
-                    <td className="px-5 py-3.5 text-xs font-extrabold text-slate-900">{job.titleAr}</td>
-                    <td className="px-5 py-3.5 text-xs font-bold">
-                      <span className="px-3 py-1 rounded-lg text-xs font-bold bg-sky-50 text-sky-700 border border-sky-100 w-fit inline-block">
-                        {job.employmentType === 'full_time'
-                          ? 'دوام كامل'
-                          : job.employmentType === 'part_time'
-                          ? 'دوام جزئي'
-                          : job.employmentType === 'hourly'
-                          ? 'بالساعة'
-                          : job.employmentType === 'contract'
-                          ? 'عقد مؤقت'
-                          : job.employmentType === 'internship'
-                          ? 'تدريب'
-                          : 'عن بُعد'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${
-                          job.status === 'open'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${job.status === 'open' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                        {job.status === 'open' ? 'مفتوح' : 'مغلق'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1">
+            <div className="p-4 sm:p-5 space-y-4 bg-slate-50/50">
+              {jobs.map((job) => {
+                const hasResponsibilities = (job.responsibilitiesAr && job.responsibilitiesAr.length > 0) || (job.responsibilitiesEn && job.responsibilitiesEn.length > 0);
+                const hasRequirements = (job.requirementsAr && job.requirementsAr.length > 0) || (job.requirementsEn && job.requirementsEn.length > 0);
+                const hasBenefits = (job.benefitsAr && job.benefitsAr.length > 0) || (job.benefitsEn && job.benefitsEn.length > 0);
+
+                return (
+                  <div key={job.id} className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs transition hover:shadow-md space-y-4">
+                    {/* Card Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-base font-extrabold text-slate-900">{job.titleAr}</h4>
+                          {job.titleEn && <span className="text-xs font-semibold text-slate-400" dir="ltr">({job.titleEn})</span>}
+                          
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${
+                              job.status === 'open'
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                : 'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${job.status === 'open' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                            {job.status === 'open' ? 'نشط / مفتوح' : 'مغلق'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
+                          <span className="px-3 py-1 rounded-lg font-bold bg-sky-50 text-sky-700 border border-sky-100">
+                            {job.employmentType === 'full_time'
+                              ? 'دوام كامل'
+                              : job.employmentType === 'part_time'
+                              ? 'دوام جزئي'
+                              : job.employmentType === 'hourly'
+                              ? 'بالساعة'
+                              : job.employmentType === 'contract'
+                              ? 'عقد مؤقت'
+                              : job.employmentType === 'internship'
+                              ? 'تدريب'
+                              : 'عن بُعد'}
+                          </span>
+
+                          {job.workingHoursAr && (
+                            <span className="px-3 py-1 rounded-lg font-bold bg-amber-50 text-amber-700 border border-amber-100 flex items-center gap-1">
+                              <span>⏰</span>
+                              <span>{job.workingHoursAr}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                         <button
                           onClick={() => onEditJob && onEditJob(job)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
+                          className="p-2 rounded-xl text-slate-500 hover:text-sky-600 bg-slate-50 hover:bg-sky-50 border border-slate-200/80 transition cursor-pointer flex items-center gap-1 text-xs font-bold"
                           title="تعديل الوظيفة"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
+                          <span>تعديل</span>
                         </button>
                         <button
                           onClick={() => onDeleteJob && onDeleteJob(job.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                          className="p-2 rounded-xl text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 border border-slate-200/80 transition cursor-pointer"
                           title="حذف الوظيفة"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -857,11 +874,128 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                           </svg>
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+
+                    {/* Description */}
+                    {job.descriptionAr && (
+                      <p className="text-xs font-medium text-slate-600 leading-relaxed bg-slate-50/60 p-3 rounded-xl border border-slate-100">
+                        {job.descriptionAr}
+                      </p>
+                    )}
+
+                    {/* Grid for Responsibilities, Requirements, Benefits */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                      {/* Responsibilities */}
+                      {hasResponsibilities && (
+                        <div className="bg-rose-50/30 p-3.5 rounded-xl border border-rose-100/60 space-y-2">
+                          <h5 className="font-extrabold text-[#d83f2a] flex items-center gap-1.5">
+                            <span>📋</span>
+                            <span>المهام والمسؤوليات</span>
+                          </h5>
+                          <ul className="space-y-1 text-slate-700 font-medium">
+                            {(job.responsibilitiesAr || []).map((resp, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <span className="text-[#d83f2a] font-bold">•</span>
+                                <span>{resp}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Requirements */}
+                      {hasRequirements && (
+                        <div className="bg-sky-50/30 p-3.5 rounded-xl border border-sky-100/60 space-y-2">
+                          <h5 className="font-extrabold text-sky-700 flex items-center gap-1.5">
+                            <span>🎯</span>
+                            <span>المتطلبات والخبرات</span>
+                          </h5>
+                          <ul className="space-y-1 text-slate-700 font-medium">
+                            {(job.requirementsAr || []).map((req, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <span className="text-sky-600 font-bold">•</span>
+                                <span>{req}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Benefits */}
+                      {hasBenefits && (
+                        <div className="bg-emerald-50/30 p-3.5 rounded-xl border border-emerald-100/60 space-y-2">
+                          <h5 className="font-extrabold text-emerald-700 flex items-center gap-1.5">
+                            <span>🎁</span>
+                            <span>المزايا والفوائد</span>
+                          </h5>
+                          <ul className="space-y-1 text-slate-700 font-medium">
+                            {(job.benefitsAr || []).map((ben, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <span className="text-emerald-600 font-bold">•</span>
+                                <span>{ben}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contact Information & Methods Details */}
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-slate-400 text-[11px]">طرق التواصل:</span>
+                        {job.contactMethods?.map((method) => {
+                          let icon: React.ReactNode = null;
+                          let subDetail = '';
+                          let colorStyle = '';
+                          let title = '';
+
+                          if (method === 'phone') {
+                            title = 'اتصال هاتفي';
+                            colorStyle = 'bg-sky-50 text-sky-700 border-sky-200';
+                            icon = (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              </svg>
+                            );
+                            subDetail = job.contactDetails?.phone || '';
+                          } else if (method === 'whatsapp') {
+                            title = 'واتساب';
+                            colorStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            icon = (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l.399.634-1.156 4.22 4.316-1.131.584.344z"/>
+                              </svg>
+                            );
+                            subDetail = job.contactDetails?.whatsapp || '';
+                          } else if (method === 'email') {
+                            title = 'البريد الإلكتروني';
+                            colorStyle = 'bg-rose-50 text-rose-700 border-rose-200';
+                            icon = (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                            );
+                            subDetail = job.contactDetails?.email || '';
+                          }
+
+                          return (
+                            <span
+                              key={method}
+                              title={title}
+                              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl font-extrabold text-xs border ${colorStyle}`}
+                            >
+                              {icon}
+                              {subDetail && <span className="font-mono text-xs" dir="ltr">{subDetail}</span>}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

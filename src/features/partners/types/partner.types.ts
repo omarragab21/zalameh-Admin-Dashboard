@@ -65,6 +65,12 @@ export type EmploymentType =
 export type ContactMethod = 'phone' | 'whatsapp' | 'email';
 export type JobStatus = 'open' | 'closed';
 
+export interface JobContactDetails {
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+}
+
 export interface JobPosition {
   id: string;
   brandId: string;
@@ -72,8 +78,17 @@ export interface JobPosition {
   titleEn?: string;
   descriptionAr?: string;
   descriptionEn?: string;
+  responsibilitiesAr?: string[];
+  responsibilitiesEn?: string[];
+  requirementsAr?: string[];
+  requirementsEn?: string[];
+  benefitsAr?: string[];
+  benefitsEn?: string[];
+  workingHoursAr?: string;
+  workingHoursEn?: string;
   employmentType: EmploymentType;
   contactMethods: ContactMethod[];
+  contactDetails?: JobContactDetails;
   status: JobStatus;
   publishingScope: PublishingScope;
   branchIds?: string[];

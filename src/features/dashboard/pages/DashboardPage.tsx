@@ -28,6 +28,13 @@ export const DashboardPage: React.FC = () => {
     packages: 'إدارة الباقات',
     ads: 'إدارة الإعلانات',
     finance: 'الإدارة المالية',
+    finance_overview: 'الإدارة المالية - النظرة العامة',
+    finance_subscriptions: 'الإدارة المالية - الاشتراكات',
+    finance_banners: 'الإدارة المالية - البانرات',
+    finance_renewals: 'الإدارة المالية - التجديدات القادمة',
+    finance_ledger: 'الإدارة المالية - السجل المالي',
+    finance_reports: 'الإدارة المالية - التقارير',
+    finance_alerts: 'الإدارة المالية - التنبيهات',
     roles: 'الأدوار والصلاحيات',
     users: 'المستخدمون',
     settings: 'إعدادات النظام',
@@ -86,27 +93,27 @@ export const DashboardPage: React.FC = () => {
             <PackagesPage />
           ) : activeItem === 'ads' ? (
             <AdsPage />
-          ) : activeItem === 'finance' ? (
-            <FinancePage />
+          ) : activeItem.startsWith('finance') ? (
+            <FinancePage activeSubItem={activeItem} onSubItemChange={(id) => setActiveItem(id)} />
           ) : activeItem === 'profile' ? (
             <ProfilePage />
           ) : activeItem === 'settings' ? (
             <SettingsPage />
           ) : (
             /* Selected Subpage Placeholder */
-            <div className="bg-white rounded-2xl p-8 border border-slate-200/80 shadow-sm text-center py-16">
-              <div className="w-14 h-14 rounded-2xl bg-red-50 text-[#d83f2a] flex items-center justify-center mx-auto mb-4 font-bold text-xl">
+            <div className="bg-[#161b26] rounded-2xl p-8 border border-slate-800 shadow-sm text-center py-16">
+              <div className="w-14 h-14 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center mx-auto mb-4 font-bold text-xl">
                 ⚙️
               </div>
-              <h2 className="text-xl font-extrabold text-slate-900 mb-2">{currentTitle}</h2>
-              <p className="text-sm text-slate-500 max-w-md mx-auto">
-                صفحة {currentTitle} قيد العمل والربط. يمكنك العودة لصفحة لوحة القيادة لعرض الإحصائيات الشاملة.
+              <h2 className="text-xl font-extrabold text-white mb-2">{currentTitle}</h2>
+              <p className="text-sm text-slate-400 max-w-md mx-auto">
+                صفحة {currentTitle} قيد العمل والربط. يمكنك العودة لصفحة لوحة القيادة أو الانتقال إلى النظرة العامة للإدارة المالية.
               </p>
               <button
-                onClick={() => setActiveItem('dashboard')}
-                className="mt-6 px-5 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c03320] text-white font-bold text-sm shadow-md shadow-[#d83f2a]/20 transition cursor-pointer"
+                onClick={() => setActiveItem('finance_overview')}
+                className="mt-6 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm shadow-md transition cursor-pointer"
               >
-                العودة إلى لوحة القيادة
+                الذهاب إلى النظرة العامة للمالية
               </button>
             </div>
           )}
