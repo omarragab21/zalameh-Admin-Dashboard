@@ -9,7 +9,6 @@ import type {
   CreateSubCategoryPayload,
   UpdateSubCategoryPayload,
 } from '../../domain/entities/category.entity';
-import { getCategoryResponseMeta } from '../../data/api/categoryApiService';
 import { CategoryRepositoryImpl } from '../../data/repositories/categoryRepositoryImpl';
 
 const repository = new CategoryRepositoryImpl();
@@ -81,7 +80,20 @@ export function useCategories() {
             )
             .map((category) => category.id)
         );
-        setCategories(res.categories);
+        setCategories((prev) => {
+          const prevMap = new Map(prev.map((c) => [c.id, c.subcategories]));
+          return res.categories.map((cat) => {
+            const existingSubs = prevMap.get(cat.id);
+            if (existingSubs && existingSubs.length > 0) {
+              return {
+                ...cat,
+                subcategories: existingSubs,
+                subcategoriesCount: Math.max(cat.subcategoriesCount, existingSubs.length),
+              };
+            }
+            return cat;
+          });
+        });
         setPaginationMeta(res.meta);
       }
     } catch (err: any) {
@@ -155,63 +167,18 @@ export function useCategories() {
     []
   );
 
-  // Handlers for CRUD operations
+  // Handlers for CRUD operations - Always re-fetch from API to update counts & pagination
   const addCategory = async (payload: CreateCategoryPayload) => {
     const newCat = await repository.createCategory(payload);
     invalidateCategoriesRequest();
-    loadedSubCategoryIds.current.add(newCat.id);
-    setCategories((prev) => [
-      newCat,
-      ...prev.filter((category) => category.id !== newCat.id),
-    ]);
+    await fetchCategoriesData();
     return newCat;
   };
 
   const updateCategory = async (id: string, payload: UpdateCategoryPayload) => {
     const updated = await repository.updateCategory(id, payload);
     invalidateCategoriesRequest();
-    const responseMeta = getCategoryResponseMeta(updated);
-    if (responseMeta.hasSubcategoryList) {
-      loadedSubCategoryIds.current.add(id);
-    }
-    setCategories((prev) =>
-      prev.map((category) =>
-        category.id === id
-          ? (() => {
-              const hasUpdatedRelations =
-                responseMeta.hasSubcategoryList || responseMeta.hasSubcategoryCount;
-              return {
-                ...category,
-                ...updated,
-                nameAr:
-                  payload.nameAr !== undefined
-                    ? updated.nameAr || payload.nameAr
-                    : category.nameAr,
-                nameEn:
-                  payload.nameEn !== undefined
-                    ? updated.nameEn || payload.nameEn
-                    : category.nameEn,
-                descriptionAr:
-                  payload.descriptionAr !== undefined
-                    ? updated.descriptionAr || payload.descriptionAr
-                    : category.descriptionAr,
-                descriptionEn:
-                  payload.descriptionEn !== undefined
-                    ? updated.descriptionEn || payload.descriptionEn
-                    : category.descriptionEn,
-                image: updated.image || category.image,
-                status: payload.status ?? category.status,
-                subcategories: hasUpdatedRelations
-                  ? updated.subcategories
-                  : category.subcategories,
-                subcategoriesCount: hasUpdatedRelations
-                  ? Math.max(updated.subcategoriesCount, updated.subcategories.length)
-                  : category.subcategoriesCount,
-              };
-            })()
-          : category
-      )
-    );
+    await fetchCategoriesData();
     return updated;
   };
 
@@ -219,32 +186,18 @@ export function useCategories() {
     await repository.deleteCategory(id);
     invalidateCategoriesRequest();
     loadedSubCategoryIds.current.delete(id);
-    setCategories((prev) => prev.filter((c) => c.id !== id));
+    if (categories.length === 1 && page > 1) {
+      setPage((prev) => Math.max(prev - 1, 1));
+    } else {
+      await fetchCategoriesData();
+    }
   };
 
   const addSubCategory = async (categoryId: string, payload: CreateSubCategoryPayload) => {
     const newSub = await repository.createSubCategory(categoryId, payload);
     invalidateCategoriesRequest();
     invalidateSubCategoryRequest(categoryId);
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id !== categoryId) return c;
-        const existingSubs = c.subcategories || [];
-        const alreadyExists = existingSubs.some((sub) => sub.id === newSub.id);
-        const subs = [
-          ...existingSubs.filter((sub) => sub.id !== newSub.id),
-          newSub,
-        ];
-        return {
-          ...c,
-          subcategories: subs,
-          subcategoriesCount: Math.max(
-            alreadyExists ? c.subcategoriesCount : c.subcategoriesCount + 1,
-            subs.length
-          ),
-        };
-      })
-    );
+    await fetchCategoriesData();
     return newSub;
   };
 
@@ -256,35 +209,7 @@ export function useCategories() {
     const updatedSub = await repository.updateSubCategory(categoryId, subCategoryId, payload);
     invalidateCategoriesRequest();
     invalidateSubCategoryRequest(categoryId);
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id !== categoryId) return c;
-        const subs = (c.subcategories || []).map((s) => {
-          if (s.id !== subCategoryId) return s;
-          return {
-            ...s,
-            ...updatedSub,
-            parentId: updatedSub.parentId || s.parentId,
-            nameAr:
-              payload.nameAr !== undefined ? updatedSub.nameAr || payload.nameAr : s.nameAr,
-            nameEn:
-              payload.nameEn !== undefined ? updatedSub.nameEn || payload.nameEn : s.nameEn,
-            descriptionAr:
-              payload.descriptionAr !== undefined
-                ? updatedSub.descriptionAr || payload.descriptionAr
-                : s.descriptionAr,
-            descriptionEn:
-              payload.descriptionEn !== undefined
-                ? updatedSub.descriptionEn || payload.descriptionEn
-                : s.descriptionEn,
-            image: updatedSub.image || s.image,
-            status: payload.status ?? s.status,
-            order: updatedSub.order ?? s.order,
-          };
-        });
-        return { ...c, subcategories: subs };
-      })
-    );
+    await fetchCategoriesData();
     return updatedSub;
   };
 
@@ -292,29 +217,15 @@ export function useCategories() {
     await repository.deleteSubCategory(categoryId, subCategoryId);
     invalidateCategoriesRequest();
     invalidateSubCategoryRequest(categoryId);
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id !== categoryId) return c;
-        const subs = (c.subcategories || []).filter((s) => s.id !== subCategoryId);
-        return {
-          ...c,
-          subcategories: subs,
-          subcategoriesCount: Math.max(c.subcategoriesCount - 1, subs.length, 0),
-        };
-      })
-    );
+    await fetchCategoriesData();
   };
 
   const reorderSubCategories = async (categoryId: string, sourceIndex: number, targetIndex: number) => {
     const updatedSubs = await repository.reorderSubCategories(categoryId, sourceIndex, targetIndex);
     invalidateCategoriesRequest();
     invalidateSubCategoryRequest(categoryId);
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id !== categoryId) return c;
-        return { ...c, subcategories: updatedSubs };
-      })
-    );
+    await fetchCategoriesData();
+    return updatedSubs;
   };
 
   return {

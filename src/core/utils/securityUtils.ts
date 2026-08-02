@@ -73,25 +73,39 @@ export function validateCategoryInputs(inputs: {
 
   const labelPrefix = inputs.isSubcategory ? 'الفئة الفرعية' : 'الفئة';
 
-  // 1. Check for empty / whitespace-only inputs
+  // 1. Language Script Detection (Arabic vs English)
+  const hasEnglishInAr = /[a-zA-Z]/.test(rawNameAr);
+  const hasArabicInEn = /[\u0600-\u06FF]/.test(rawNameEn);
+
+  if (hasEnglishInAr) {
+    errors.nameAr = `عفواً، حقل الاسم بالعربية مخصص للغة العربية فقط (يرجى عدم كتابة حروف إنجليزية هنا).`;
+  }
+
+  if (hasArabicInEn) {
+    errors.nameEn = `عفواً، حقل الاسم بالإنجليزية مخصص للغة الإنجليزية فقط (يرجى عدم كتابة حروف عربية هنا).`;
+  }
+
+  // 2. Check for empty / whitespace-only inputs
   if (!rawNameAr && !rawNameEn) {
     errors.nameAr = `يرجى إدخال اسم ${labelPrefix} بالعربية أو الإنجليزية على الأقل.`;
     errors.nameEn = `Please enter the ${inputs.isSubcategory ? 'subcategory' : 'category'} name in Arabic or English.`;
-  } else if (rawNameAr && rawNameAr.length < 2) {
-    errors.nameAr = `اسم ${labelPrefix} بالعربية قصير جداً (الحد الأدنى حرفين).`;
+  } else {
+    if (rawNameAr && !hasEnglishInAr && rawNameAr.length < 2) {
+      errors.nameAr = `اسم ${labelPrefix} بالعربية قصير جداً (الحد الأدنى حرفين).`;
+    }
+
+    if (rawNameEn && !hasArabicInEn && rawNameEn.length < 2) {
+      errors.nameEn = `اسم ${labelPrefix} بالإنجليزية قصير جداً (الحد الأدنى حرفين).`;
+    }
   }
 
-  if (rawNameEn && rawNameEn.length < 2) {
-    errors.nameEn = `اسم ${labelPrefix} بالإنجليزية قصير جداً (الحد الأدنى حرفين).`;
-  }
-
-  // 2. Security Check: SQL Injection Detection
+  // 3. Security Check: SQL Injection Detection
   const allText = `${rawNameAr} ${rawNameEn} ${rawDescAr} ${rawDescEn}`;
   if (SQL_INJECTION_PATTERN.test(allText)) {
     errors.general = 'تم رصد رموز أو استعلامات برمجية غير مسموح بها (SQL Injection Protection).';
   }
 
-  // 3. Security Check: XSS / Script Injection Detection
+  // 4. Security Check: XSS / Script Injection Detection
   if (XSS_INJECTION_PATTERN.test(allText)) {
     errors.general = 'تم رصد وسوم برمجية ضارة (XSS Protection).';
   }

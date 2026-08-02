@@ -127,12 +127,36 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
     setImageError(null);
   };
 
+  const handleNameArChange = (val: string) => {
+    setNameAr(val);
+    if (/[a-zA-Z]/.test(val)) {
+      setFormErrors((prev) => ({
+        ...prev,
+        nameAr: 'عفواً، حقل الاسم بالعربية مخصص للغة العربية فقط (يرجى عدم كتابة حروف إنجليزية هنا).',
+      }));
+    } else {
+      setFormErrors((prev) => ({ ...prev, nameAr: undefined }));
+    }
+  };
+
+  const handleNameEnChange = (val: string) => {
+    setNameEn(val);
+    if (/[\u0600-\u06FF]/.test(val)) {
+      setFormErrors((prev) => ({
+        ...prev,
+        nameEn: 'عفواً، حقل الاسم بالإنجليزية مخصص للغة الإنجليزية فقط (يرجى عدم كتابة حروف عربية هنا).',
+      }));
+    } else {
+      setFormErrors((prev) => ({ ...prev, nameEn: undefined }));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
 
     if (imageFile && imageFile.size > MAX_IMAGE_SIZE_BYTES) {
-      alert(`حجم ملف الصورة يجب ألا يتجاوز 512 كيلوبايت. يرجى استخدام أداة "قص وضبط الصورة" لتقليل الحجم تلقائياً.`);
+      setImageError(`حجم ملف الصورة يجب ألا يتجاوز 512 كيلوبايت. يرجى استخدام أداة "قص وضبط الصورة" لتقليل الحجم تلقائياً.`);
       handleOpenCropper();
       return;
     }
@@ -148,12 +172,9 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
 
     if (!validation.isValid) {
       setFormErrors(validation.errors);
-      if (validation.errors.general) {
-        alert(validation.errors.general);
-      }
-      if (validation.errors.nameAr && activeTab === 'en') {
+      if (validation.errors.nameAr) {
         setActiveTab('ar');
-      } else if (validation.errors.nameEn && activeTab === 'ar' && !validation.errors.nameAr) {
+      } else if (validation.errors.nameEn) {
         setActiveTab('en');
       }
       return;
@@ -341,10 +362,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
                     <input
                       type="text"
                       value={nameAr}
-                      onChange={(e) => {
-                        setNameAr(e.target.value);
-                        if (formErrors.nameAr) setFormErrors((prev) => ({ ...prev, nameAr: undefined }));
-                      }}
+                      onChange={(e) => handleNameArChange(e.target.value)}
                       disabled={isLoading}
                       placeholder="مثال، خدمات التوصيل"
                       className={`w-full bg-slate-50/70 border text-slate-800 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/30 transition font-semibold disabled:opacity-60 ${
@@ -382,10 +400,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
                     <input
                       type="text"
                       value={nameEn}
-                      onChange={(e) => {
-                        setNameEn(e.target.value);
-                        if (formErrors.nameEn) setFormErrors((prev) => ({ ...prev, nameEn: undefined }));
-                      }}
+                      onChange={(e) => handleNameEnChange(e.target.value)}
                       disabled={isLoading}
                       placeholder="e.g. Delivery Services"
                       className={`w-full bg-slate-50/70 border text-slate-800 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/30 transition font-semibold disabled:opacity-60 ${
