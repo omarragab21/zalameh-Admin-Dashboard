@@ -10,10 +10,9 @@ import type {
 } from '../../domain/entities/category.entity';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+  typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')
     ? '/api/v1'
-    : 'https://backend.zalameh.app/api/v1');
+    : (import.meta.env.VITE_API_BASE_URL || 'https://backend.zalameh.app/api/v1');
 
 export class ApiRequestError extends Error {
   readonly status: number;
