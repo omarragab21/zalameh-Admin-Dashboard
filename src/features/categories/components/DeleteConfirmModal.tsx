@@ -3,10 +3,11 @@ import React from 'react';
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   itemName: string;
   isSubcategory?: boolean;
+  isLoading?: boolean;
 }
 
 export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
@@ -16,6 +17,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   title,
   itemName,
   isSubcategory = false,
+  isLoading = false,
 }) => {
   if (!isOpen) return null;
 
@@ -51,19 +53,18 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm transition cursor-pointer"
+            disabled={isLoading}
+            className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             إلغاء
           </button>
           <button
             type="button"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className="px-6 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c03320] text-white font-bold text-sm shadow-md shadow-[#d83f2a]/20 transition cursor-pointer"
+            onClick={() => void onConfirm()}
+            disabled={isLoading}
+            className="px-6 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c03320] text-white font-bold text-sm shadow-md shadow-[#d83f2a]/20 transition cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
           >
-            {isSubcategory ? 'حذف' : 'حذف الفئة'}
+            {isLoading ? 'جاري الحذف...' : isSubcategory ? 'حذف' : 'حذف الفئة'}
           </button>
         </div>
       </div>

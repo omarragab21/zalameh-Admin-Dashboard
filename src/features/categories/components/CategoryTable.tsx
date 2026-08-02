@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Category, SubCategory } from '../types/category.types';
 
 interface CategoryTableProps {
@@ -11,6 +11,7 @@ interface CategoryTableProps {
   onDeleteSubCategory: (parentCategoryId: string, subCategoryId: string) => void;
   onViewSubCategory?: (parentCategory: Category, subCategory: SubCategory, index: number) => void;
   onReorderSubCategories?: (parentCatId: string, sourceIndex: number, targetIndex: number) => void;
+  onExpandCategory?: (categoryId: string) => void | Promise<unknown>;
 }
 
 export const CategoryTable: React.FC<CategoryTableProps> = ({
@@ -23,8 +24,9 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
   onDeleteSubCategory,
   onViewSubCategory,
   onReorderSubCategories,
+  onExpandCategory,
 }) => {
-  const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>(['cat-1']);
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
@@ -33,16 +35,30 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
   const [dragOverSubIndex, setDragOverSubIndex] = useState<{ parentId: string; index: number } | null>(null);
 
   const toggleExpand = (id: string) => {
+    const isExpanding = !expandedCategoryIds.includes(id);
     setExpandedCategoryIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+
+    if (isExpanding && onExpandCategory) {
+      void Promise.resolve()
+        .then(() => onExpandCategory(id))
+        .catch((err) => {
+          console.error('Unable to expand category', id, err);
+        });
+    }
   };
 
   // Pagination calculation
   const totalItems = categories.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const activePage = Math.min(currentPage, totalPages);
+  const startIndex = (activePage - 1) * itemsPerPage;
   const currentCategories = categories.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   const handleDragStart = (parentId: string, index: number) => {
     setDraggedSubIndex({ parentId, index });
@@ -59,6 +75,11 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
     if (draggedSubIndex && draggedSubIndex.parentId === parentId && onReorderSubCategories) {
       onReorderSubCategories(parentId, draggedSubIndex.index, targetIndex);
     }
+    setDraggedSubIndex(null);
+    setDragOverSubIndex(null);
+  };
+
+  const handleDragEnd = () => {
     setDraggedSubIndex(null);
     setDragOverSubIndex(null);
   };
@@ -83,7 +104,7 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
               currentCategories.map((cat) => {
                 const isExpanded = expandedCategoryIds.includes(cat.id);
                 const subList = cat.subcategories || [];
-                const actualSubCount = subList.length > 0 ? subList.length : cat.subcategoriesCount;
+                const actualSubCount = Math.max(cat.subcategoriesCount ?? 0, subList.length);
 
                 return (
                   <React.Fragment key={cat.id}>
@@ -120,11 +141,20 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
 
                       {/* Image Thumbnail */}
                       <td className="py-4 px-4">
-                        <img
-                          src={cat.image}
-                          alt={cat.nameAr}
-                          className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-xs"
-                        />
+                        {cat.image ? (
+                          <img
+                            src={cat.image}
+                            alt={cat.nameAr}
+                            className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-xs"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center text-slate-500 font-extrabold text-sm shadow-xs">
+                            {cat.nameAr ? cat.nameAr.charAt(0) : 'ف'}
+                          </div>
+                        )}
                       </td>
 
                       {/* Name in Arabic */}
@@ -134,7 +164,7 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
 
                       {/* Name in English */}
                       <td className="py-4 px-4 text-slate-500 font-semibold" dir="ltr">
-                        {cat.nameEn}
+                        {cat.nameEn || '-'}
                       </td>
 
                       {/* Subcategories Badge */}
@@ -228,6 +258,7 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
                             key={sub.id}
                             draggable
                             onDragStart={() => handleDragStart(cat.id, idx)}
+                            onDragEnd={handleDragEnd}
                             onDragOver={(e) => handleDragOver(e, cat.id, idx)}
                             onDrop={() => handleDrop(cat.id, idx)}
                             className={`transition-colors border-b border-slate-100/60 ${
@@ -250,17 +281,28 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
                               </div>
                             </td>
 
-                            {/* Column 2: Empty Spacer */}
-                            <td className="py-3.5 px-4"></td>
+                            {/* Column 2: Subcategory Image Thumbnail */}
+                            <td className="py-3.5 px-4">
+                              {sub.image ? (
+                                <img
+                                  src={sub.image}
+                                  alt={sub.nameAr}
+                                  className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs mr-2"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : null}
+                            </td>
 
-                            {/* Column 3: Aligned Arabic Subcategory Name (Bold) */}
+                            {/* Column 3: Aligned Arabic Subcategory Name */}
                             <td className="py-3.5 px-4 font-extrabold text-slate-900 text-xs tracking-tight">
                               {sub.nameAr}
                             </td>
 
-                            {/* Column 4: Aligned English Subcategory Name (Bold) */}
+                            {/* Column 4: Aligned English Subcategory Name */}
                             <td className="py-3.5 px-4 font-semibold text-slate-500 text-xs" dir="ltr">
-                              {sub.nameEn}
+                              {sub.nameEn || '-'}
                             </td>
 
                             {/* Column 5: Subcategories count spacer */}
@@ -268,61 +310,57 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
                               -
                             </td>
 
-                            {/* Columns 6 & 7: Status Badge and Actions (Preview, Edit, Delete) placed side-by-side */}
-                            <td colSpan={2} className="py-3.5 px-4">
-                              <div className="flex items-center justify-center gap-3">
-                                {/* Status Badge */}
+                            {/* Column 6: Status Badge */}
+                            <td className="py-3.5 px-4 text-center">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                  sub.status === 'active'
+                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
+                                    : 'bg-slate-100 text-slate-500 border border-slate-200/50'
+                                }`}
+                              >
                                 <span
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                    sub.status === 'active'
-                                      ? 'bg-emerald-50 text-emerald-600'
-                                      : 'bg-slate-200/60 text-slate-500'
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    sub.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'
                                   }`}
+                                />
+                                {sub.status === 'active' ? 'نشط' : 'غير نشط'}
+                              </span>
+                            </td>
+
+                            {/* Column 7: Action Buttons */}
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => (onViewSubCategory ? onViewSubCategory(cat, sub, idx) : onViewCategory(cat))}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
+                                  title="معاينة الفئة الفرعية"
                                 >
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full ${
-                                      sub.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'
-                                    }`}
-                                  />
-                                  {sub.status === 'active' ? 'نشط' : 'غير نشط'}
-                                </span>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
 
-                                {/* Action Icons right next to status */}
-                                <div className="flex items-center gap-1">
-                                  {/* Eye Preview */}
-                                  <button
-                                    onClick={() => (onViewSubCategory ? onViewSubCategory(cat, sub, idx) : onViewCategory(cat))}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
-                                    title="معاينة الفئة الفرعية"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                  </button>
+                                <button
+                                  onClick={() => onEditSubCategory(cat, sub)}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition cursor-pointer"
+                                  title="تعديل الفئة الفرعية"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
 
-                                  {/* Edit Pencil */}
-                                  <button
-                                    onClick={() => onEditSubCategory(cat, sub)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition cursor-pointer"
-                                    title="تعديل الفئة الفرعية"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg>
-                                  </button>
-
-                                  {/* Delete Trash */}
-                                  <button
-                                    onClick={() => onDeleteSubCategory(cat.id, sub.id)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-                                    title="حذف الفئة الفرعية"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                </div>
+                                <button
+                                  onClick={() => onDeleteSubCategory(cat.id, sub.id)}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                                  title="حذف الفئة الفرعية"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -333,8 +371,18 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
               })
             ) : (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-400 font-semibold">
-                  لا توجد فئات مطابقة للبحث أو التصفية الحالية.
+                <td colSpan={7} className="py-16 text-center">
+                  <div className="flex flex-col items-center justify-center space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 4H5m14 4H5M19 7H5" />
+                      </svg>
+                    </div>
+                    <p className="text-base font-extrabold text-slate-800">لا يوجد أي فئة رئيسية</p>
+                    <p className="text-xs text-slate-400 font-semibold max-w-sm">
+                      لم يتم إضافة أي فئات رئيسية حتى الآن. يمكنك إضافة فئة جديدة بالضغط على زر إضافة فئة رئيسية.
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}
@@ -349,10 +397,9 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5" dir="rtl">
-          {/* Previous Page Button */}
           <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(Math.max(1, activePage - 1))}
+            disabled={activePage === 1}
             title="الصفحة السابقة"
             className="w-8 h-8 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition cursor-pointer"
           >
@@ -361,9 +408,8 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
             </svg>
           </button>
 
-          {/* Page Numbers */}
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-            const isActive = pageNum === currentPage;
+            const isActive = pageNum === activePage;
             return (
               <button
                 key={pageNum}
@@ -379,10 +425,9 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
             );
           })}
 
-          {/* Next Page Button */}
           <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(Math.min(totalPages, activePage + 1))}
+            disabled={activePage === totalPages}
             title="الصفحة التالية"
             className="w-8 h-8 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition cursor-pointer"
           >

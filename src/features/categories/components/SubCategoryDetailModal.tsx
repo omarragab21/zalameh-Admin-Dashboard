@@ -21,10 +21,26 @@ export const SubCategoryDetailModal: React.FC<SubCategoryDetailModalProps> = ({
   if (!isOpen || !subCategory || !parentCategory) return null;
 
   // Convert numbers to Arabic digits
-  const toArabicNums = (n: number) => n.toString().replace(/\d/g, (d) => '٠١٢٣٥٦٧٨٩'[parseInt(d)]);
+  const toArabicNums = (n: number) => n.toString().replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
 
   // Format creation date in Arabic
-  const arabicDate = '١٦ يناير ٢٠٢٤';
+  const formatDateInArabic = (dateStr?: string) => {
+    if (!dateStr) return 'غير محدد';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return new Intl.DateTimeFormat('ar-EG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }).format(d);
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formattedDate = formatDateInArabic(subCategory.createdAt);
+  const actualOrder = subCategory.order ?? orderIndex;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-fadeIn" dir="rtl">
@@ -51,7 +67,7 @@ export const SubCategoryDetailModal: React.FC<SubCategoryDetailModalProps> = ({
 
         {/* Modal Content */}
         <div className="p-6 overflow-y-auto flex-1">
-          {/* Main Titles: Arabic Top-Right, English Bottom-Left (Bolder font for English) */}
+          {/* Main Titles: Arabic Top-Right, English Bottom-Left */}
           <div className="mb-5 pb-3 border-b border-slate-100 space-y-1">
             <h2 className="text-lg font-black text-slate-900 text-right">
               {subCategory.nameAr}
@@ -61,7 +77,7 @@ export const SubCategoryDetailModal: React.FC<SubCategoryDetailModalProps> = ({
             </div>
           </div>
 
-          {/* 3 Detail Cards (With Arabic formatted Date & Order) */}
+          {/* 3 Detail Cards (With Real Date & Order) */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             {/* Card 1: Order (#) */}
             <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100/80 flex flex-col items-center justify-center text-center">
@@ -69,10 +85,10 @@ export const SubCategoryDetailModal: React.FC<SubCategoryDetailModalProps> = ({
                 <span className="text-sm font-black">#</span>
               </div>
               <span className="text-[11px] font-bold text-slate-400 mb-1 block">الترتيب</span>
-              <span className="font-black text-slate-900 text-sm">{toArabicNums(orderIndex)}</span>
+              <span className="font-black text-slate-900 text-sm">{toArabicNums(actualOrder)}</span>
             </div>
 
-            {/* Card 2: Creation Date in Arabic */}
+            {/* Card 2: Real Creation Date in Arabic */}
             <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100/80 flex flex-col items-center justify-center text-center">
               <div className="text-slate-400 text-xs mb-1">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,7 +96,7 @@ export const SubCategoryDetailModal: React.FC<SubCategoryDetailModalProps> = ({
                 </svg>
               </div>
               <span className="text-[11px] font-bold text-slate-400 mb-1 block">تاريخ الإنشاء</span>
-              <span className="font-extrabold text-slate-800 text-[11px]">{arabicDate}</span>
+              <span className="font-extrabold text-slate-800 text-[11px]">{formattedDate}</span>
             </div>
 
             {/* Card 3: Parent Category */}
@@ -97,7 +113,7 @@ export const SubCategoryDetailModal: React.FC<SubCategoryDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Status Row (Clean without grey background or border, aligned right) */}
+          {/* Status Row */}
           <div className="flex items-center justify-start gap-2 text-xs font-bold text-slate-600">
             <span>الحالة:</span>
             <span
@@ -117,7 +133,7 @@ export const SubCategoryDetailModal: React.FC<SubCategoryDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Footer Actions (White background as requested) */}
+        {/* Modal Footer Actions */}
         <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
           <button
             type="button"

@@ -4,10 +4,24 @@ import type { Category } from '../types/category.types';
 interface CategoryDetailModalProps {
   category: Category | null;
   onClose: () => void;
+  isLoadingSubcategories?: boolean;
+  subcategoriesLoadError?: string | null;
+  onRetrySubcategories?: () => void;
 }
 
-export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({ category, onClose }) => {
+export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
+  category,
+  onClose,
+  isLoadingSubcategories = false,
+  subcategoriesLoadError = null,
+  onRetrySubcategories,
+}) => {
   if (!category) return null;
+
+  const actualSubcategoryCount = Math.max(
+    category.subcategoriesCount,
+    category.subcategories.length
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-fadeIn" dir="rtl">
@@ -58,7 +72,7 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({ catego
             <div>
               <span className="text-slate-400 font-bold block mb-1">عدد الفئات الفرعية</span>
               <span className="font-extrabold text-slate-900 text-sm">
-                {category.subcategories?.length || category.subcategoriesCount} فئات
+                {actualSubcategoryCount} فئات
               </span>
             </div>
           </div>
@@ -73,10 +87,27 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({ catego
           {/* Subcategories List */}
           <div>
             <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">
-              الفئات الفرعية ({category.subcategories?.length || 0})
+              الفئات الفرعية ({actualSubcategoryCount})
             </h4>
             <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
-              {category.subcategories && category.subcategories.length > 0 ? (
+              {isLoadingSubcategories ? (
+                <div className="text-center py-6 text-xs text-slate-400 font-semibold">
+                  جاري تحميل الفئات الفرعية...
+                </div>
+              ) : subcategoriesLoadError ? (
+                <div className="text-center py-5 text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl">
+                  <p>{subcategoriesLoadError}</p>
+                  {onRetrySubcategories && (
+                    <button
+                      type="button"
+                      onClick={onRetrySubcategories}
+                      className="mt-3 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-bold transition cursor-pointer"
+                    >
+                      إعادة المحاولة
+                    </button>
+                  )}
+                </div>
+              ) : category.subcategories && category.subcategories.length > 0 ? (
                 category.subcategories.map((sub) => (
                   <div
                     key={sub.id}
@@ -99,7 +130,9 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({ catego
                 ))
               ) : (
                 <div className="text-center py-6 text-xs text-slate-400 font-semibold">
-                  لا توجد فئات فرعية مضافة بعد.
+                  {actualSubcategoryCount > 0
+                    ? 'تعذر تحميل تفاصيل الفئات الفرعية حالياً.'
+                    : 'لا توجد فئات فرعية مضافة بعد.'}
                 </div>
               )}
             </div>

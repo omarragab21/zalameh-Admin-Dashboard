@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Category, SubCategory, CategoryFilterStatus } from '../types/category.types';
-import { initialCategories } from '../data/mockCategories';
+import { useCategories } from '../presentation/hooks/useCategories';
 import { CategoryStatsHeader } from '../components/CategoryStatsHeader';
 import { CategoryFilterBar } from '../components/CategoryFilterBar';
 import { CategoryTable } from '../components/CategoryTable';
@@ -11,9 +11,27 @@ import { SubCategoryDetailModal } from '../components/SubCategoryDetailModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 
 export const CategoriesPage: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<CategoryFilterStatus>('all');
+  const {
+    categories,
+    filteredCategories,
+    loading,
+    error,
+    stats,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addSubCategory,
+    updateSubCategory,
+    deleteSubCategory,
+    reorderSubCategories,
+    fetchSubCategories,
+    isSubCategoriesLoaded,
+    refresh,
+  } = useCategories();
 
   // Modals state
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -24,6 +42,9 @@ export const CategoriesPage: React.FC = () => {
   const [editingSubCategory, setEditingSubCategory] = useState<SubCategory | null>(null);
 
   const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
+  const [isViewingCategoryLoading, setIsViewingCategoryLoading] = useState(false);
+  const [viewingCategoryLoadError, setViewingCategoryLoadError] = useState<string | null>(null);
+  const viewCategoryRequestVersion = useRef(0);
   const [viewingSubCategory, setViewingSubCategory] = useState<{
     parent: Category;
     sub: SubCategory;
@@ -37,57 +58,54 @@ export const CategoriesPage: React.FC = () => {
     sub: SubCategory;
   } | null>(null);
 
-  // Compute Statistics
-  const totalCount = categories.length;
-  const activeCount = useMemo(() => categories.filter((c) => c.status === 'active').length, [categories]);
-  const inactiveCount = useMemo(() => categories.filter((c) => c.status === 'inactive').length, [categories]);
+  // Submitting state for async operations & Toast Notification State
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Filtered categories
-  const filteredCategories = useMemo(() => {
-    return categories.filter((cat) => {
-      // Status filter
-      if (statusFilter !== 'all' && cat.status !== statusFilter) {
-        return false;
-      }
-      // Search filter (in Arabic name or English name or subcategories)
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesAr = cat.nameAr.toLowerCase().includes(q);
-        const matchesEn = cat.nameEn.toLowerCase().includes(q);
-        const matchesSub = cat.subcategories?.some(
-          (sub) => sub.nameAr.toLowerCase().includes(q) || sub.nameEn.toLowerCase().includes(q)
-        );
-        return matchesAr || matchesEn || matchesSub;
-      }
-      return true;
-    });
-  }, [categories, statusFilter, searchQuery]);
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage({ text, type });
+  };
 
   // Add / Edit Main Category Handler
-  const handleSaveCategory = (categoryData: Partial<Category>) => {
-    if (editingCategory) {
-      // Update existing category
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === editingCategory.id
-            ? { ...c, ...categoryData }
-            : c
-        )
-      );
-    } else {
-      // Add new main category
-      const newCat: Category = {
-        id: `cat-${Date.now()}`,
-        nameAr: categoryData.nameAr || 'فئة جديدة',
-        nameEn: categoryData.nameEn || 'New Category',
-        descriptionAr: categoryData.descriptionAr,
-        descriptionEn: categoryData.descriptionEn,
-        image: categoryData.image || 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=150&auto=format&fit=crop&q=80',
-        status: categoryData.status || 'active',
-        subcategoriesCount: 0,
-        subcategories: [],
-      };
-      setCategories((prev) => [newCat, ...prev]);
+  const handleSaveCategory = async (categoryData: Partial<Category> & { imageFile?: File }) => {
+    setIsSubmitting(true);
+    try {
+      if (editingCategory) {
+        // Update existing category
+        await updateCategory(editingCategory.id, {
+          nameAr: categoryData.nameAr,
+          nameEn: categoryData.nameEn,
+          descriptionAr: categoryData.descriptionAr,
+          descriptionEn: categoryData.descriptionEn,
+          status: categoryData.status,
+          image: categoryData.imageFile || categoryData.image,
+        });
+        showToast('تم حفظ تعديلات الفئة بنجاح');
+      } else {
+        // Add new main category
+        await addCategory({
+          nameAr: categoryData.nameAr || 'فئة جديدة',
+          nameEn: categoryData.nameEn || 'New Category',
+          descriptionAr: categoryData.descriptionAr,
+          descriptionEn: categoryData.descriptionEn,
+          status: categoryData.status || 'active',
+          image: categoryData.imageFile || categoryData.image,
+        });
+        showToast('تم إضافة الفئة الرئيسية بنجاح');
+      }
+      setIsCategoryModalOpen(false);
+      setEditingCategory(null);
+    } catch (err: any) {
+      showToast(err.message || 'حدث خطأ أثناء حفظ الفئة', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -100,10 +118,18 @@ export const CategoriesPage: React.FC = () => {
   };
 
   // Confirm Delete Main Category
-  const handleConfirmDeleteCategory = () => {
+  const handleConfirmDeleteCategory = async () => {
     if (deletingCategory) {
-      setCategories((prev) => prev.filter((c) => c.id !== deletingCategory.id));
-      setDeletingCategory(null);
+      setIsSubmitting(true);
+      try {
+        await deleteCategory(deletingCategory.id);
+        showToast('تم حذف الفئة الرئيسية بنجاح');
+        setDeletingCategory(null);
+      } catch (err: any) {
+        showToast(err.message || 'حدث خطأ أثناء حذف الفئة', 'error');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -122,40 +148,39 @@ export const CategoriesPage: React.FC = () => {
   };
 
   // Save SubCategory Handler
-  const handleSaveSubCategory = (subData: Partial<SubCategory>) => {
+  const handleSaveSubCategory = async (subData: Partial<SubCategory>) => {
     if (!parentCategoryForSub) return;
-
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id !== parentCategoryForSub.id) return c;
-
-        let updatedSubs = [...(c.subcategories || [])];
-        if (editingSubCategory) {
-          // Edit existing subcategory
-          updatedSubs = updatedSubs.map((s) =>
-            s.id === editingSubCategory.id ? { ...s, ...subData } : s
-          );
-        } else {
-          // Add new subcategory
-          const newSub: SubCategory = {
-            id: `sub-${Date.now()}`,
-            parentId: parentCategoryForSub.id,
-            nameAr: subData.nameAr || 'فئة فرعية جديدة',
-            nameEn: subData.nameEn || 'New Subcategory',
-            descriptionAr: subData.descriptionAr,
-            descriptionEn: subData.descriptionEn,
-            status: subData.status || 'active',
-          };
-          updatedSubs.push(newSub);
-        }
-
-        return {
-          ...c,
-          subcategories: updatedSubs,
-          subcategoriesCount: updatedSubs.length,
-        };
-      })
-    );
+    setIsSubmitting(true);
+    try {
+      if (editingSubCategory) {
+        // Edit existing subcategory
+        await updateSubCategory(parentCategoryForSub.id, editingSubCategory.id, {
+          nameAr: subData.nameAr,
+          nameEn: subData.nameEn,
+          descriptionAr: subData.descriptionAr,
+          descriptionEn: subData.descriptionEn,
+          status: subData.status,
+        });
+        showToast('تم حفظ تعديلات الفئة الفرعية بنجاح');
+      } else {
+        // Add new subcategory
+        await addSubCategory(parentCategoryForSub.id, {
+          parentId: parentCategoryForSub.id,
+          nameAr: subData.nameAr || 'فئة فرعية جديدة',
+          nameEn: subData.nameEn || 'New Subcategory',
+          descriptionAr: subData.descriptionAr,
+          descriptionEn: subData.descriptionEn,
+          status: subData.status || 'active',
+        });
+        showToast('تم إضافة الفئة الفرعية بنجاح');
+      }
+      setIsSubCategoryModalOpen(false);
+      setEditingSubCategory(null);
+    } catch (err: any) {
+      showToast(err.message || 'حدث خطأ أثناء حفظ الفئة الفرعية', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Trigger Delete SubCategory Modal
@@ -168,102 +193,195 @@ export const CategoriesPage: React.FC = () => {
   };
 
   // Confirm Delete SubCategory
-  const handleConfirmDeleteSubCategory = () => {
+  const handleConfirmDeleteSubCategory = async () => {
     if (deletingSubCategory) {
       const { parentCatId, sub } = deletingSubCategory;
-      setCategories((prev) =>
-        prev.map((c) => {
-          if (c.id !== parentCatId) return c;
-          const updatedSubs = (c.subcategories || []).filter((s) => s.id !== sub.id);
-          return {
-            ...c,
-            subcategories: updatedSubs,
-            subcategoriesCount: updatedSubs.length,
-          };
-        })
-      );
-      setDeletingSubCategory(null);
+      setIsSubmitting(true);
+      try {
+        await deleteSubCategory(parentCatId, sub.id);
+        showToast('تم حذف الفئة الفرعية بنجاح');
+        setDeletingSubCategory(null);
+      } catch (err: any) {
+        showToast(err.message || 'حدث خطأ أثناء حذف الفئة الفرعية', 'error');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
   // Reorder SubCategories Handler (Swap / Drag & Drop)
-  const handleReorderSubCategories = (parentCatId: string, sourceIndex: number, targetIndex: number) => {
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id !== parentCatId) return c;
-        const list = [...(c.subcategories || [])];
-        if (sourceIndex < 0 || sourceIndex >= list.length || targetIndex < 0 || targetIndex >= list.length) return c;
-        const [movedItem] = list.splice(sourceIndex, 1);
-        list.splice(targetIndex, 0, movedItem);
-        return {
-          ...c,
-          subcategories: list,
-        };
-      })
-    );
+  const handleReorderSubCategories = async (parentCatId: string, sourceIndex: number, targetIndex: number) => {
+    try {
+      await reorderSubCategories(parentCatId, sourceIndex, targetIndex);
+    } catch (err: any) {
+      console.error('Reorder error:', err);
+    }
+  };
+
+  const handleViewCategory = async (category: Category) => {
+    const requestVersion = viewCategoryRequestVersion.current + 1;
+    viewCategoryRequestVersion.current = requestVersion;
+    setViewingCategory(category);
+    setViewingCategoryLoadError(null);
+
+    if (
+      isSubCategoriesLoaded(category.id) &&
+      category.subcategories.length >= category.subcategoriesCount
+    ) {
+      setIsViewingCategoryLoading(false);
+      return;
+    }
+
+    setIsViewingCategoryLoading(true);
+    try {
+      const subcategories = await fetchSubCategories(category.id);
+      if (viewCategoryRequestVersion.current !== requestVersion) return;
+      setViewingCategory((current) =>
+        current?.id === category.id
+          ? {
+              ...current,
+              subcategories,
+              subcategoriesCount: subcategories.length,
+            }
+          : current
+      );
+    } catch (err: any) {
+      if (viewCategoryRequestVersion.current === requestVersion) {
+        setViewingCategoryLoadError(
+          err?.message || 'تعذر تحميل الفئات الفرعية حالياً.'
+        );
+      }
+    } finally {
+      if (viewCategoryRequestVersion.current === requestVersion) {
+        setIsViewingCategoryLoading(false);
+      }
+    }
+  };
+
+  const handleCloseCategoryDetails = () => {
+    viewCategoryRequestVersion.current += 1;
+    setIsViewingCategoryLoading(false);
+    setViewingCategoryLoadError(null);
+    setViewingCategory(null);
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* 1. Header Stats (3 Cards) */}
+    <div className="space-y-6 animate-fadeIn relative" dir="rtl">
+      {/* Toast Pop-up Notification */}
+      {toastMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+          <div
+            className={`px-5 py-3 rounded-2xl shadow-xl border flex items-center gap-3 backdrop-blur-md transition-all ${
+              toastMessage.type === 'success'
+                ? 'bg-emerald-900/90 border-emerald-700 text-emerald-100'
+                : 'bg-red-900/90 border-red-700 text-red-100'
+            }`}
+          >
+            {toastMessage.type === 'success' ? (
+              <svg className="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            <span className="text-sm font-bold">{toastMessage.text}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl flex items-center justify-between">
+          <span className="text-sm font-semibold">{error}</span>
+          <button
+            onClick={refresh}
+            className="text-xs bg-red-100 hover:bg-red-200 text-red-800 font-bold px-3 py-1.5 rounded-xl transition cursor-pointer"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      )}
+
+      {/* 1. Header Stats (3 Cards: Total, Active, Inactive) */}
       <CategoryStatsHeader
-        totalCount={totalCount}
-        activeCount={activeCount}
-        inactiveCount={inactiveCount}
+        totalCount={stats.totalCount}
+        activeCount={stats.activeCount}
+        inactiveCount={stats.inactiveCount}
       />
 
-      {/* 2. Unified Connected Container: Filter Bar + Category Table + Pagination */}
+      {/* 2. Unified Container: Filter Bar + Category Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
-        {/* Top Header Filter Bar inside the same card block */}
+        {/* Top Header Filter Bar inside the card block */}
         <CategoryFilterBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
+          onStatusFilterChange={(st: CategoryFilterStatus) => setStatusFilter(st)}
           onAddCategoryClick={() => {
             setEditingCategory(null);
             setIsCategoryModalOpen(true);
           }}
         />
 
-        {/* Main Category Table with Row Collapsible Subcategories */}
-        <CategoryTable
-          categories={filteredCategories}
-          onEditCategory={(cat) => {
-            setEditingCategory(cat);
-            setIsCategoryModalOpen(true);
-          }}
-          onDeleteCategory={handleRequestDeleteCategory}
-          onViewCategory={(cat) => setViewingCategory(cat)}
-          onAddSubCategory={handleOpenAddSubCategory}
-          onEditSubCategory={handleOpenEditSubCategory}
-          onDeleteSubCategory={handleRequestDeleteSubCategory}
-          onViewSubCategory={(parent, sub, index) => setViewingSubCategory({ parent, sub, index })}
-          onReorderSubCategories={handleReorderSubCategories}
-        />
+        {/* Loading Spinner / Main Category Table */}
+        {loading ? (
+          <div className="p-12 text-center text-slate-400 font-medium">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#d83f2a] border-t-transparent mb-3"></div>
+            <p className="text-xs">جاري تحميل بيانات الفئات...</p>
+          </div>
+        ) : (
+          <CategoryTable
+            categories={filteredCategories}
+            onEditCategory={(cat) => {
+              setEditingCategory(cat);
+              setIsCategoryModalOpen(true);
+            }}
+            onDeleteCategory={handleRequestDeleteCategory}
+            onViewCategory={(cat) => void handleViewCategory(cat)}
+            onAddSubCategory={handleOpenAddSubCategory}
+            onEditSubCategory={handleOpenEditSubCategory}
+            onDeleteSubCategory={handleRequestDeleteSubCategory}
+            onViewSubCategory={(parent, sub, index) => setViewingSubCategory({ parent, sub, index })}
+            onReorderSubCategories={handleReorderSubCategories}
+            onExpandCategory={fetchSubCategories}
+          />
+        )}
       </div>
 
       {/* Add / Edit Category Modal */}
       <AddCategoryModal
         isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
+        onClose={() => {
+          if (!isSubmitting) setIsCategoryModalOpen(false);
+        }}
         onSave={handleSaveCategory}
         editingCategory={editingCategory}
+        isLoading={isSubmitting}
       />
 
       {/* Add / Edit SubCategory Modal */}
       <AddSubCategoryModal
         isOpen={isSubCategoryModalOpen}
-        onClose={() => setIsSubCategoryModalOpen(false)}
+        onClose={() => {
+          if (!isSubmitting) setIsSubCategoryModalOpen(false);
+        }}
         parentCategory={parentCategoryForSub}
         onSave={handleSaveSubCategory}
         editingSubCategory={editingSubCategory}
+        isLoading={isSubmitting}
       />
 
       {/* View Parent Category Details Modal */}
       <CategoryDetailModal
         category={viewingCategory}
-        onClose={() => setViewingCategory(null)}
+        onClose={handleCloseCategoryDetails}
+        isLoadingSubcategories={isViewingCategoryLoading}
+        subcategoriesLoadError={viewingCategoryLoadError}
+        onRetrySubcategories={() => {
+          if (viewingCategory) void handleViewCategory(viewingCategory);
+        }}
       />
 
       {/* View SubCategory Details Modal */}
@@ -276,7 +394,7 @@ export const CategoriesPage: React.FC = () => {
         onEditClick={handleOpenEditSubCategory}
       />
 
-      {/* Delete Main Category Confirmation Modal (Matching Screenshot 1) */}
+      {/* Delete Main Category Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={!!deletingCategory}
         onClose={() => setDeletingCategory(null)}
@@ -284,9 +402,10 @@ export const CategoriesPage: React.FC = () => {
         title="حذف الفئة الرئيسية"
         itemName={deletingCategory?.nameAr || ''}
         isSubcategory={false}
+        isLoading={isSubmitting}
       />
 
-      {/* Delete Subcategory Confirmation Modal (Matching Screenshot 2) */}
+      {/* Delete Subcategory Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={!!deletingSubCategory}
         onClose={() => setDeletingSubCategory(null)}
@@ -294,6 +413,7 @@ export const CategoriesPage: React.FC = () => {
         title="حذف الفئة الفرعية"
         itemName={deletingSubCategory?.sub.nameAr || ''}
         isSubcategory={true}
+        isLoading={isSubmitting}
       />
     </div>
   );
