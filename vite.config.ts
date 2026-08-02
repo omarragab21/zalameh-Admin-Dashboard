@@ -54,4 +54,13 @@ function terminalLoggerPlugin(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), terminalLoggerPlugin()],
+  server: {
+    proxy: {
+      '/api/v1': {
+        target: 'https://backend.zalameh.app',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })
