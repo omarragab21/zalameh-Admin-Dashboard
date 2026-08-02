@@ -104,7 +104,7 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
               currentCategories.map((cat) => {
                 const isExpanded = expandedCategoryIds.includes(cat.id);
                 const subList = cat.subcategories || [];
-                const actualSubCount = Math.max(cat.subcategoriesCount ?? 0, subList.length);
+                const actualSubCount = cat.subcategoriesCount ?? 0;
 
                 return (
                   <React.Fragment key={cat.id}>

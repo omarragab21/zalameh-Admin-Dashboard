@@ -17,7 +17,7 @@ import {
   setCategoryResponseMeta,
 } from '../api/categoryApiService';
 
-const CATEGORIES_STORAGE_KEY = 'zalameh_categories_data_v4';
+const CATEGORIES_STORAGE_KEY = 'zalameh_categories_data_v5';
 
 export class CategoryRepositoryImpl implements CategoryRepository {
   private readonly categoryDetailsInFlight = new Map<string, Promise<Category>>();
@@ -148,7 +148,6 @@ export class CategoryRepositoryImpl implements CategoryRepository {
           return {
             ...category,
             subcategories,
-            subcategoriesCount: subcategories.length,
           };
         } catch (err) {
           if (
@@ -232,7 +231,6 @@ export class CategoryRepositoryImpl implements CategoryRepository {
           ? {
               ...category,
               subcategories: subs,
-              subcategoriesCount: subs.length,
             }
           : category
       );
@@ -338,10 +336,6 @@ export class CategoryRepositoryImpl implements CategoryRepository {
                   : responseMeta.hasSubcategoryCount && apiCat.subcategoriesCount === 0
                   ? []
                   : currentCategory.subcategories;
-                const subcategoriesCount =
-                  responseMeta.hasSubcategoryList || responseMeta.hasSubcategoryCount
-                    ? Math.max(apiCat.subcategoriesCount, subcategories.length)
-                    : currentCategory.subcategoriesCount;
 
                 return {
                   ...currentCategory,
@@ -365,7 +359,6 @@ export class CategoryRepositoryImpl implements CategoryRepository {
                   image: apiCat.image || currentCategory.image,
                   status: payload.status ?? currentCategory.status,
                   subcategories,
-                  subcategoriesCount,
                   createdAt: apiCat.createdAt || currentCategory.createdAt,
                   updatedAt: apiCat.updatedAt || currentCategory.updatedAt,
                 };
@@ -443,7 +436,7 @@ export class CategoryRepositoryImpl implements CategoryRepository {
             return {
               ...c,
               subcategories: subs,
-              subcategoriesCount: subs.length,
+              subcategoriesCount: c.subcategoriesCount + 1,
             };
           });
           this.saveLocalCategories(updated);
@@ -478,7 +471,7 @@ export class CategoryRepositoryImpl implements CategoryRepository {
       return {
         ...c,
         subcategories: subs,
-        subcategoriesCount: subs.length,
+        subcategoriesCount: c.subcategoriesCount + 1,
       };
     });
 
@@ -585,7 +578,7 @@ export class CategoryRepositoryImpl implements CategoryRepository {
         return {
           ...c,
           subcategories: subs,
-          subcategoriesCount: subs.length,
+          subcategoriesCount: Math.max(c.subcategoriesCount - 1, 0),
         };
       });
       this.saveLocalCategories(updated);
