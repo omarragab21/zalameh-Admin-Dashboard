@@ -55,10 +55,11 @@ function parseNonNegativeInteger(value: unknown): number | null {
   return Math.floor(parsed);
 }
 
-function extractCollectionItems(payload: any, resourceName: string): any[] {
+function extractCollectionItems(payload: any, _resourceName: string): any[] {
   if (Array.isArray(payload)) return payload;
   if (payload && Array.isArray(payload.data)) return payload.data;
-  throw new Error(`Invalid ${resourceName} response`);
+  if (payload && payload.data && typeof payload.data === 'object') return [payload.data];
+  return [];
 }
 
 function extractLastPage(payload: any): number {
