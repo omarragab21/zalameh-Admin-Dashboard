@@ -21,6 +21,8 @@ export const CategoriesPage: React.FC = () => {
     setSearchQuery,
     statusFilter,
     setStatusFilter,
+    setPage,
+    paginationMeta,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -334,6 +336,8 @@ export const CategoriesPage: React.FC = () => {
         ) : (
           <CategoryTable
             categories={filteredCategories}
+            paginationMeta={paginationMeta}
+            onPageChange={setPage}
             onEditCategory={(cat) => {
               setEditingCategory(cat);
               setIsCategoryModalOpen(true);

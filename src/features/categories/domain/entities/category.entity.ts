@@ -28,6 +28,20 @@ export interface Category {
 
 export type CategoryFilterStatus = 'all' | 'active' | 'inactive';
 
+export interface PaginationMeta {
+  currentPage: number;
+  lastPage: number;
+  perPage: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
+export interface PaginatedCategoriesResult {
+  categories: Category[];
+  meta: PaginationMeta;
+}
+
 export interface CategoryStats {
   totalCount: number;
   activeCount: number;

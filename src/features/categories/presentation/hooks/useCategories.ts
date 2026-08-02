@@ -3,6 +3,7 @@ import type {
   Category,
   CategoryFilterStatus,
   CategoryStats,
+  PaginationMeta,
   CreateCategoryPayload,
   UpdateCategoryPayload,
   CreateSubCategoryPayload,
@@ -19,9 +20,35 @@ export function useCategories() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<CategoryFilterStatus>('all');
+  const [page, setPage] = useState<number>(1);
+  const [perPage, setPerPage] = useState<number>(15);
+  const [paginationMeta, setPaginationMeta] = useState<PaginationMeta>({
+    currentPage: 1,
+    lastPage: 1,
+    perPage: 15,
+    total: 0,
+    from: 0,
+    to: 0,
+  });
+
   const categoriesRequestVersion = useRef(0);
   const subCategoryRequestVersions = useRef(new Map<string, number>());
   const loadedSubCategoryIds = useRef(new Set<string>());
+
+  const handleSearchChange = (q: string) => {
+    setSearchQuery(q);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (st: CategoryFilterStatus) => {
+    setStatusFilter(st);
+    setPage(1);
+  };
+
+  const handlePerPageChange = (size: number) => {
+    setPerPage(size);
+    setPage(1);
+  };
 
   const invalidateSubCategoryRequest = (categoryId: string) => {
     const nextVersion = (subCategoryRequestVersions.current.get(categoryId) ?? 0) + 1;
@@ -38,10 +65,15 @@ export function useCategories() {
     setLoading(true);
     setError(null);
     try {
-      const data = await repository.getCategories('all');
+      const res = await repository.getCategoriesPage({
+        page,
+        perPage,
+        statusFilter,
+        search: searchQuery,
+      });
       if (categoriesRequestVersion.current === requestVersion) {
         loadedSubCategoryIds.current = new Set(
-          data
+          res.categories
             .filter(
               (category) =>
                 category.subcategories.length > 0 &&
@@ -49,7 +81,8 @@ export function useCategories() {
             )
             .map((category) => category.id)
         );
-        setCategories(data);
+        setCategories(res.categories);
+        setPaginationMeta(res.meta);
       }
     } catch (err: any) {
       if (categoriesRequestVersion.current === requestVersion) {
@@ -61,7 +94,7 @@ export function useCategories() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [page, perPage, statusFilter, searchQuery]);
 
   useEffect(() => {
     void fetchCategoriesData();
@@ -72,7 +105,7 @@ export function useCategories() {
 
   // Dynamic Statistics Calculation
   const stats: CategoryStats = useMemo(() => {
-    const totalCount = categories.length;
+    const totalCount = paginationMeta.total || categories.length;
     const activeCount = categories.filter((c) => c.status === 'active').length;
     const inactiveCount = categories.filter((c) => c.status === 'inactive').length;
     const subcategoriesCount = categories.reduce(
@@ -86,28 +119,9 @@ export function useCategories() {
       inactiveCount,
       subcategoriesCount,
     };
-  }, [categories]);
+  }, [categories, paginationMeta.total]);
 
-  // Live Filtration logic (Status filter + Search Query)
-  const filteredCategories = useMemo(() => {
-    return categories.filter((cat) => {
-      // 1. Status Filter
-      if (statusFilter !== 'all' && cat.status !== statusFilter) {
-        return false;
-      }
-      // 2. Search Query Filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesAr = cat.nameAr.toLowerCase().includes(q);
-        const matchesEn = cat.nameEn.toLowerCase().includes(q);
-        const matchesSub = cat.subcategories?.some(
-          (sub) => sub.nameAr.toLowerCase().includes(q) || sub.nameEn.toLowerCase().includes(q)
-        );
-        return matchesAr || matchesEn || matchesSub;
-      }
-      return true;
-    });
-  }, [categories, statusFilter, searchQuery]);
+  const filteredCategories = categories;
 
   // Fetch Subcategories for a given category ID on expand
   const fetchSubCategories = async (categoryId: string) => {
@@ -310,9 +324,14 @@ export function useCategories() {
     error,
     stats,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: handleSearchChange,
     statusFilter,
-    setStatusFilter,
+    setStatusFilter: handleStatusFilterChange,
+    page,
+    setPage,
+    perPage,
+    setPerPage: handlePerPageChange,
+    paginationMeta,
     addCategory,
     updateCategory,
     deleteCategory,

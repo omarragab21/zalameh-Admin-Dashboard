@@ -2,6 +2,7 @@ import type {
   Category,
   SubCategory,
   CategoryFilterStatus,
+  PaginatedCategoriesResult,
   CreateCategoryPayload,
   UpdateCategoryPayload,
   CreateSubCategoryPayload,
@@ -13,6 +14,16 @@ export interface CategoryRepository {
    * Fetch all main categories along with their nested subcategories
    */
   getCategories(statusFilter?: CategoryFilterStatus): Promise<Category[]>;
+
+  /**
+   * Fetch a paginated list of main categories from API
+   */
+  getCategoriesPage(params?: {
+    page?: number;
+    perPage?: number;
+    statusFilter?: CategoryFilterStatus;
+    search?: string;
+  }): Promise<PaginatedCategoriesResult>;
 
   /**
    * Fetch subcategories for a specific main category ID

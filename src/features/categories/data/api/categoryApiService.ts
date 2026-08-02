@@ -3,6 +3,7 @@ import { sendTerminalLog } from '../../../../core/utils/terminalLogger';
 import type {
   Category,
   SubCategory,
+  PaginationMeta,
   CreateCategoryPayload,
   UpdateCategoryPayload,
   CreateSubCategoryPayload,
@@ -65,6 +66,25 @@ function extractCollectionItems(payload: any, _resourceName: string): any[] {
 function extractLastPage(payload: any): number {
   const lastPage = parseNonNegativeInteger(payload?.meta?.last_page);
   return Math.max(lastPage ?? 1, 1);
+}
+
+export function extractPaginationMeta(payload: any, itemsLength: number = 0): PaginationMeta {
+  const meta = payload?.meta;
+  const currentPage = parseNonNegativeInteger(meta?.current_page) ?? 1;
+  const lastPage = Math.max(parseNonNegativeInteger(meta?.last_page) ?? 1, 1);
+  const perPage = parseNonNegativeInteger(meta?.per_page) ?? 10;
+  const total = parseNonNegativeInteger(meta?.total) ?? itemsLength;
+  const from = parseNonNegativeInteger(meta?.from) ?? (total > 0 ? 1 : 0);
+  const to = parseNonNegativeInteger(meta?.to) ?? itemsLength;
+
+  return {
+    currentPage,
+    lastPage,
+    perPage,
+    total,
+    from,
+    to,
+  };
 }
 
 /**
@@ -223,6 +243,68 @@ export const categoryApiService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
     return headers;
+  },
+
+  async fetchCategoriesPage(
+    page: number = 1,
+    perPage: number = 10,
+    search?: string,
+    status?: string
+  ): Promise<{ data: Category[]; meta: PaginationMeta }> {
+    const params = new URLSearchParams();
+    if (page) params.set('page', String(page));
+    if (perPage) params.set('per_page', String(perPage));
+    if (search && search.trim()) params.set('search', search.trim());
+    if (status && status !== 'all') params.set('status', status);
+
+    const queryStr = params.toString();
+    const url = `${API_BASE_URL}/categories${queryStr ? `?${queryStr}` : ''}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+
+      if (!response.ok) {
+        sendTerminalLog({
+          type: 'API_ERROR',
+          method: 'GET',
+          url,
+          status: response.status,
+          message: `Failed to fetch categories page: ${response.statusText}`,
+        });
+        throw new ApiRequestError(
+          `Failed to fetch categories page: ${response.statusText}`,
+          response.status
+        );
+      }
+
+      const data = await response.json();
+      const rawList = extractCollectionItems(data, 'categories');
+      const categories = rawList
+        .map(mapCategoryFromApi)
+        .filter((category) => Boolean(category.nameAr || category.nameEn));
+      const meta = extractPaginationMeta(data, categories.length);
+
+      sendTerminalLog({
+        type: 'API_RESPONSE',
+        method: 'GET',
+        url,
+        status: response.status,
+        data: `Fetched ${categories.length} categories on page ${meta.currentPage} of ${meta.lastPage} (Total: ${meta.total})`,
+      });
+
+      return { data: categories, meta };
+    } catch (err: any) {
+      sendTerminalLog({
+        type: 'API_ERROR',
+        method: 'GET',
+        url,
+        message: err.message || String(err),
+      });
+      throw err;
+    }
   },
 
   async fetchCategories(): Promise<Category[]> {

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import type { Category, SubCategory } from '../types/category.types';
+import type { Category, SubCategory, PaginationMeta } from '../types/category.types';
 
 interface CategoryTableProps {
   categories: Category[];
+  paginationMeta?: PaginationMeta;
+  onPageChange?: (page: number) => void;
   onEditCategory: (category: Category) => void;
   onDeleteCategory: (categoryId: string) => void;
   onViewCategory: (category: Category) => void;
@@ -16,6 +18,8 @@ interface CategoryTableProps {
 
 export const CategoryTable: React.FC<CategoryTableProps> = ({
   categories,
+  paginationMeta,
+  onPageChange,
   onEditCategory,
   onDeleteCategory,
   onViewCategory,
@@ -27,12 +31,17 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
   onExpandCategory,
 }) => {
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const [localPage, setLocalPage] = useState(1);
+  const localPerPage = 15;
 
   // Drag and Drop state
   const [draggedSubIndex, setDraggedSubIndex] = useState<{ parentId: string; index: number } | null>(null);
   const [dragOverSubIndex, setDragOverSubIndex] = useState<{ parentId: string; index: number } | null>(null);
+
+  // Reset local page to 1 whenever categories list reference or length changes
+  useEffect(() => {
+    setLocalPage(1);
+  }, [categories.length, categories]);
 
   const toggleExpand = (id: string) => {
     const isExpanding = !expandedCategoryIds.includes(id);
@@ -49,16 +58,46 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
     }
   };
 
-  // Pagination calculation
-  const totalItems = categories.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-  const activePage = Math.min(currentPage, totalPages);
-  const startIndex = (activePage - 1) * itemsPerPage;
-  const currentCategories = categories.slice(startIndex, startIndex + itemsPerPage);
+  // Pagination calculation (Supports both Server Pagination and Local Client Pagination)
+  const isServerPaginated = Boolean(paginationMeta);
+  const totalItems = paginationMeta ? paginationMeta.total : categories.length;
+  const itemsPerPage = paginationMeta ? paginationMeta.perPage : localPerPage;
+  const activePage = paginationMeta ? paginationMeta.currentPage : Math.min(localPage, Math.ceil(totalItems / itemsPerPage) || 1);
+  const totalPages = paginationMeta ? paginationMeta.lastPage : Math.ceil(totalItems / itemsPerPage) || 1;
 
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
-  }, [totalPages]);
+  const currentCategories = isServerPaginated
+    ? categories
+    : categories.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage);
+
+  const displayFrom = paginationMeta
+    ? (paginationMeta.from ?? (totalItems > 0 ? (activePage - 1) * itemsPerPage + 1 : 0))
+    : (totalItems === 0 ? 0 : (activePage - 1) * itemsPerPage + 1);
+
+  const displayTo = paginationMeta
+    ? (paginationMeta.to ?? Math.min(activePage * itemsPerPage, totalItems))
+    : Math.min(activePage * itemsPerPage, totalItems);
+
+  const handlePageSelect = (newPage: number) => {
+    if (onPageChange) {
+      onPageChange(newPage);
+    } else {
+      setLocalPage(newPage);
+    }
+  };
+
+  // Helper for generating page numbers with ellipsis if totalPages is large
+  const getPageNumbers = (current: number, total: number): (number | string)[] => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 3) {
+      return [1, 2, 3, 4, '...', total];
+    }
+    if (current >= total - 2) {
+      return [1, '...', total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
 
   const handleDragStart = (parentId: string, index: number) => {
     setDraggedSubIndex({ parentId, index });
@@ -393,13 +432,13 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
       {/* Table Footer with Pagination */}
       <div className="p-4 bg-slate-50/50 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-semibold" dir="rtl">
         <div>
-          عرض {totalItems === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + itemsPerPage, totalItems)} من {totalItems} فئة رئيسية
+          عرض {displayFrom}-{displayTo} من أصل {totalItems} فئة رئيسية
         </div>
 
         <div className="flex items-center gap-1.5" dir="rtl">
           <button
-            onClick={() => setCurrentPage(Math.max(1, activePage - 1))}
-            disabled={activePage === 1}
+            onClick={() => handlePageSelect(Math.max(1, activePage - 1))}
+            disabled={activePage <= 1}
             title="الصفحة السابقة"
             className="w-8 h-8 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition cursor-pointer"
           >
@@ -408,12 +447,20 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
             </svg>
           </button>
 
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+          {getPageNumbers(activePage, totalPages).map((pageNum, idx) => {
+            if (typeof pageNum === 'string') {
+              return (
+                <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold select-none">
+                  ...
+                </span>
+              );
+            }
+
             const isActive = pageNum === activePage;
             return (
               <button
                 key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
+                onClick={() => handlePageSelect(pageNum)}
                 className={`w-8 h-8 rounded-xl font-extrabold text-xs flex items-center justify-center transition cursor-pointer ${
                   isActive
                     ? 'bg-[#d83f2a] text-white shadow-xs shadow-[#d83f2a]/30'
@@ -426,8 +473,8 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
           })}
 
           <button
-            onClick={() => setCurrentPage(Math.min(totalPages, activePage + 1))}
-            disabled={activePage === totalPages}
+            onClick={() => handlePageSelect(Math.min(totalPages, activePage + 1))}
+            disabled={activePage >= totalPages}
             title="الصفحة التالية"
             className="w-8 h-8 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition cursor-pointer"
           >
