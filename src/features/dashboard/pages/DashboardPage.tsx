@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardSidebar } from '../components/DashboardSidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { StatsOverview } from '../components/StatsOverview';
@@ -16,9 +16,50 @@ import { PartnersPage } from '../../partners/pages/PartnersPage';
 import { PackagesPage } from '../../packages/pages/PackagesPage';
 import { AdsPage } from '../../ads/pages/AdsPage';
 
+const ACTIVE_TAB_KEY = 'zalameh_active_nav_tab';
+
 export const DashboardPage: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeItem, setActiveItem] = useState('dashboard');
+
+  // Initialize active tab from URL query param "?tab=..." or localStorage, defaulting to 'categories'
+  const [activeItem, setActiveItem] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam) return tabParam;
+      const saved = localStorage.getItem(ACTIVE_TAB_KEY);
+      if (saved) return saved;
+    }
+    return 'categories';
+  });
+
+  // Sync active tab with localStorage & URL search params on tab change
+  const handleSelectItem = (id: string) => {
+    setActiveItem(id);
+    try {
+      localStorage.setItem(ACTIVE_TAB_KEY, id);
+      if (typeof window !== 'undefined' && window.history.pushState) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', id);
+        window.history.pushState({}, '', url.toString());
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
+  // Sync back button / forward button browser navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam) {
+        setActiveItem(tabParam);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const navTitles: Record<string, string> = {
     dashboard: 'لوحة القيادة',
@@ -50,7 +91,7 @@ export const DashboardPage: React.FC = () => {
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         activeItem={activeItem}
-        onSelectItem={(id) => setActiveItem(id)}
+        onSelectItem={handleSelectItem}
       />
 
       {/* Main Content Area */}
@@ -58,8 +99,8 @@ export const DashboardPage: React.FC = () => {
         {/* Top Bar Header */}
         <DashboardHeader
           pageTitle={currentTitle}
-          onNavigateToProfile={() => setActiveItem('profile')}
-          onNavigateToSettings={() => setActiveItem('settings')}
+          onNavigateToProfile={() => handleSelectItem('profile')}
+          onNavigateToSettings={() => handleSelectItem('settings')}
         />
 
         {/* Dashboard View Body */}
@@ -94,7 +135,7 @@ export const DashboardPage: React.FC = () => {
           ) : activeItem === 'ads' ? (
             <AdsPage />
           ) : activeItem.startsWith('finance') ? (
-            <FinancePage activeSubItem={activeItem} onSubItemChange={(id) => setActiveItem(id)} />
+            <FinancePage activeSubItem={activeItem} onSubItemChange={handleSelectItem} />
           ) : activeItem === 'profile' ? (
             <ProfilePage />
           ) : activeItem === 'settings' ? (
@@ -110,7 +151,7 @@ export const DashboardPage: React.FC = () => {
                 صفحة {currentTitle} قيد العمل والربط. يمكنك العودة لصفحة لوحة القيادة أو الانتقال إلى النظرة العامة للإدارة المالية.
               </p>
               <button
-                onClick={() => setActiveItem('finance_overview')}
+                onClick={() => handleSelectItem('finance_overview')}
                 className="mt-6 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm shadow-md transition cursor-pointer"
               >
                 الذهاب إلى النظرة العامة للمالية

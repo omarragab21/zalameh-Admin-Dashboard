@@ -9,7 +9,6 @@ import type {
   UpdateSubCategoryPayload,
 } from '../../domain/entities/category.entity';
 import {
-  ApiRequestError,
   categoryApiService,
   getCategoryResponseMeta,
   mapCategoryFromApi,
@@ -17,7 +16,7 @@ import {
   setCategoryResponseMeta,
 } from '../api/categoryApiService';
 
-const CATEGORIES_STORAGE_KEY = 'zalameh_categories_data_v5';
+const CATEGORIES_STORAGE_KEY = 'zalameh_categories_data_v6';
 
 export class CategoryRepositoryImpl implements CategoryRepository {
   private readonly categoryDetailsInFlight = new Map<string, Promise<Category>>();
@@ -150,12 +149,6 @@ export class CategoryRepositoryImpl implements CategoryRepository {
             subcategories,
           };
         } catch (err) {
-          if (
-            err instanceof ApiRequestError &&
-            (err.status === 401 || err.status === 403)
-          ) {
-            throw err;
-          }
           console.warn(
             `Unable to hydrate subcategories for category ${category.id}.`,
             err
@@ -167,39 +160,49 @@ export class CategoryRepositoryImpl implements CategoryRepository {
   }
 
   private async loadCategories(requestVersion: number): Promise<Category[]> {
-    let apiError: unknown = null;
-
     try {
       const apiCategories = await categoryApiService.fetchCategories();
-      const hydratedCategories = await this.hydrateMissingSubCategoryCounts(apiCategories);
+      if (apiCategories && apiCategories.length > 0) {
+        const hydratedCategories = await this.hydrateMissingSubCategoryCounts(apiCategories);
 
-      if (requestVersion !== this.categoryDataVersion) {
-        return this.getLocalCategories();
+        if (requestVersion !== this.categoryDataVersion) {
+          return this.getLocalCategories();
+        }
+
+        this.saveLocalCategories(hydratedCategories);
+        return hydratedCategories;
       }
-
-      this.saveLocalCategories(hydratedCategories);
-      return hydratedCategories;
     } catch (err) {
       console.warn('Backend API connection warning.', err);
-      apiError = err;
-    }
-
-    if (
-      apiError instanceof ApiRequestError &&
-      (apiError.status === 401 || apiError.status === 403)
-    ) {
-      throw apiError;
     }
 
     const local = this.getLocalCategories();
     if (local.length > 0) {
-      const hydratedLocal = await this.hydrateMissingSubCategoryCounts(local);
-      this.saveLocalCategories(hydratedLocal);
-      return hydratedLocal;
+      return local;
     }
 
-    if (apiError instanceof Error) throw apiError;
-    throw new Error('Failed to load categories');
+    // Default initial categories fallback
+    const defaultInitialCategory: Category = {
+      id: '7',
+      nameAr: 'مطاعم',
+      nameEn: 'Restaurants',
+      descriptionAr: 'قسم المطاعم والمأكولات',
+      descriptionEn: 'Restaurants section',
+      status: 'active',
+      subcategoriesCount: 1,
+      subcategories: [
+        {
+          id: '21',
+          parentId: '7',
+          nameAr: 'الاكل السريع',
+          nameEn: 'fast food',
+          status: 'active',
+        },
+      ],
+    };
+
+    this.saveLocalCategories([defaultInitialCategory]);
+    return [defaultInitialCategory];
   }
 
   async getCategories(statusFilter?: CategoryFilterStatus): Promise<Category[]> {
@@ -209,6 +212,10 @@ export class CategoryRepositoryImpl implements CategoryRepository {
     try {
       const categories = await request;
       return this.filterByStatus(categories, statusFilter);
+    } catch (err) {
+      console.warn('API getCategories error, falling back to local categories.', err);
+      const fallback = this.getLocalCategories();
+      return this.filterByStatus(fallback, statusFilter);
     } finally {
       if (this.categoriesInFlight === request) {
         this.categoriesInFlight = null;
@@ -238,15 +245,8 @@ export class CategoryRepositoryImpl implements CategoryRepository {
       return subs;
     } catch (err) {
       console.warn('API getSubCategoriesByCategoryId failed.', err);
-      if (
-        err instanceof ApiRequestError &&
-        (err.status === 401 || err.status === 403)
-      ) {
-        throw err;
-      }
-
-      if (err instanceof Error) throw err;
-      throw new Error('Failed to load subcategories');
+      const current = this.getLocalCategories().find((category) => category.id === categoryId);
+      return current?.subcategories ?? [];
     }
   }
 
@@ -267,12 +267,6 @@ export class CategoryRepositoryImpl implements CategoryRepository {
       return category;
     } catch (err) {
       console.warn(`Unable to fetch category ${id}.`, err);
-      if (
-        err instanceof ApiRequestError &&
-        (err.status === 401 || err.status === 403)
-      ) {
-        throw err;
-      }
       return this.getLocalCategories().find((category) => category.id === id) ?? null;
     }
   }
@@ -409,7 +403,6 @@ export class CategoryRepositoryImpl implements CategoryRepository {
       await categoryApiService.deleteCategory(id);
     } catch (err) {
       console.warn('API deleteCategory warning, deleting locally.', err);
-      throw err;
     }
 
     await this.commitCategoryMutation((local) => {
@@ -566,7 +559,6 @@ export class CategoryRepositoryImpl implements CategoryRepository {
       await categoryApiService.deleteSubCategory(categoryId, subCategoryId);
     } catch (err) {
       console.warn('API deleteSubCategory warning.', err);
-      throw err;
     }
 
     await this.commitCategoryMutation((local) => {
