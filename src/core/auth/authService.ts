@@ -3,7 +3,9 @@ import type { LoginCredentials, LoginResponse, User } from '../types/auth.types'
 const TOKEN_KEY = 'zalameh_admin_token';
 const USER_KEY = 'zalameh_admin_user';
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL !== '/api/v1'
+  ? import.meta.env.VITE_API_BASE_URL
+  : (import.meta.env.DEV ? '/api/v1' : 'https://backend.zalameh.app/api/v1');
 
 /**
  * Sanitizes input string against Script/HTML/Code injection (XSS & Injection Protection)

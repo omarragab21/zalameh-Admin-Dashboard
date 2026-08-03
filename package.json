@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:clean": "rm -rf dist && tsc -b && vite build",
     "lint": "oxlint",
     "test:categories": "node --test tests/categories.integration.test.mjs",
     "preview": "vite preview"

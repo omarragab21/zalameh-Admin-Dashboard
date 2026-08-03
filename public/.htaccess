@@ -1,0 +1,11 @@
+Options -MultiViews
+RewriteEngine On
+
+# استثناء مسارات الـ API والـ Sanctum من التحويل لـ index.html
+RewriteCond %{REQUEST_URI} ^/api/ [OR]
+RewriteCond %{REQUEST_URI} ^/sanctum/
+RewriteRule ^ - [L]
+
+# الإعداد الخاص بـ Vue/React للـ Single Page Application
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.html [QSA,L]
