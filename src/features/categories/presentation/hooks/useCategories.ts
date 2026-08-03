@@ -30,6 +30,8 @@ export function useCategories() {
     to: 0,
   });
 
+  const [totalAllCount, setTotalAllCount] = useState<number>(0);
+
   const categoriesRequestVersion = useRef(0);
   const subCategoryRequestVersions = useRef(new Map<string, number>());
   const loadedSubCategoryIds = useRef(new Set<string>());
@@ -71,6 +73,12 @@ export function useCategories() {
         search: searchQuery,
       });
       if (categoriesRequestVersion.current === requestVersion) {
+        if (statusFilter === 'all' && !searchQuery) {
+          setTotalAllCount(res.meta.total);
+        } else if (res.meta.total > totalAllCount) {
+          setTotalAllCount(res.meta.total);
+        }
+
         loadedSubCategoryIds.current = new Set(
           res.categories
             .filter(
@@ -106,7 +114,7 @@ export function useCategories() {
         setLoading(false);
       }
     }
-  }, [page, perPage, statusFilter, searchQuery]);
+  }, [page, perPage, statusFilter, searchQuery, totalAllCount]);
 
   useEffect(() => {
     void fetchCategoriesData();
@@ -117,7 +125,7 @@ export function useCategories() {
 
   // Dynamic Statistics Calculation
   const stats: CategoryStats = useMemo(() => {
-    const totalCount = paginationMeta.total || categories.length;
+    const totalCount = totalAllCount || paginationMeta.total || categories.length;
     const activeCount = categories.filter((c) => c.status === 'active').length;
     const inactiveCount = categories.filter((c) => c.status === 'inactive').length;
     const subcategoriesCount = categories.reduce(
@@ -131,9 +139,23 @@ export function useCategories() {
       inactiveCount,
       subcategoriesCount,
     };
-  }, [categories, paginationMeta.total]);
+  }, [categories, paginationMeta.total, totalAllCount]);
 
-  const filteredCategories = categories;
+  // Filtered categories based on selected statusFilter ('all' | 'active' | 'inactive') and searchQuery
+  const filteredCategories = useMemo(() => {
+    return categories.filter((cat) => {
+      if (statusFilter !== 'all' && cat.status !== statusFilter) {
+        return false;
+      }
+      if (searchQuery && searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesAr = cat.nameAr.toLowerCase().includes(q);
+        const matchesEn = cat.nameEn.toLowerCase().includes(q);
+        return matchesAr || matchesEn;
+      }
+      return true;
+    });
+  }, [categories, statusFilter, searchQuery]);
 
   // Fetch Subcategories for a given category ID on expand
   const fetchSubCategories = async (categoryId: string) => {

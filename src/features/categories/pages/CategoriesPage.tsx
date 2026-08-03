@@ -337,6 +337,8 @@ export const CategoriesPage: React.FC = () => {
           <CategoryTable
             categories={filteredCategories}
             paginationMeta={paginationMeta}
+            statusFilter={statusFilter}
+            totalAllCategoriesCount={stats.totalCount}
             onPageChange={setPage}
             onEditCategory={(cat) => {
               setEditingCategory(cat);

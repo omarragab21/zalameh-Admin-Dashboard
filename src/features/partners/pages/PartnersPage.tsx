@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import type { Partner, Brand, BrandStatus, Branch, BranchStatus, Offer, PartnerFilterStatus, BrandExtraInfo, PromoCode, JobPosition, MenuItem } from '../types/partner.types';
-import { initialPartners } from '../data/mockPartners';
+import React, { useState, useEffect } from 'react';
+import type { Partner, Brand, BrandStatus, Branch, BranchStatus, Offer, BrandExtraInfo, PromoCode, JobPosition, MenuItem } from '../types/partner.types';
 import { PartnerStatsHeader } from '../components/PartnerStatsHeader';
 import { PartnerFilterBar } from '../components/PartnerFilterBar';
 import { PartnersTable } from '../components/PartnersTable';
@@ -16,10 +15,32 @@ import { AddEditMenuItemModal } from '../components/AddEditMenuItemModal';
 import { SuspendPartnerModal } from '../components/SuspendPartnerModal';
 import { DeletePartnerModal } from '../components/DeletePartnerModal';
 
+import { usePartners } from '../presentation/hooks/usePartners';
+
 export const PartnersPage: React.FC = () => {
-  const [partners, setPartners] = useState<Partner[]>(initialPartners);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PartnerFilterStatus>('all');
+  const {
+    partners,
+    loading,
+    error,
+    searchQuery,
+    statusFilter,
+    page,
+    paginationMeta,
+    stats,
+    handleSearchChange,
+    handleStatusFilterChange,
+    handlePageChange,
+    handleSavePartner: savePartnerToApi,
+    handleToggleStatus: toggleStatusInApi,
+    handleDeletePartner: deletePartnerFromApi,
+    refetch,
+  } = usePartners();
+
+  const [localPartners, setLocalPartners] = useState<Partner[]>([]);
+
+  useEffect(() => {
+    setLocalPartners(partners);
+  }, [partners]);
 
   // Active View State (List View vs Detail Brands View)
   const [selectedPartnerForBrands, setSelectedPartnerForBrands] = useState<Partner | null>(null);
@@ -56,91 +77,49 @@ export const PartnersPage: React.FC = () => {
   const [isAddEditMenuItemOpen, setIsAddEditMenuItemOpen] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
 
-  // Statistics calculation
-  const totalCount = partners.length;
-  const activeCount = useMemo(() => partners.filter((p) => p.status === 'active').length, [partners]);
-  const pendingCount = useMemo(() => partners.filter((p) => p.status === 'pending').length, [partners]);
-  const inactiveCount = useMemo(() => partners.filter((p) => p.status === 'inactive').length, [partners]);
-
-  // Filtered partners
-  const filteredPartners = useMemo(() => {
-    return partners.filter((p) => {
-      // Status filter
-      if (statusFilter !== 'all' && p.status !== statusFilter) {
-        return false;
-      }
-      // Search filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesAr = p.nameAr.toLowerCase().includes(q);
-        const matchesEn = p.nameEn.toLowerCase().includes(q);
-        const matchesEmail = p.email.toLowerCase().includes(q);
-        const matchesPhone = p.phone.toLowerCase().includes(q);
-        return matchesAr || matchesEn || matchesEmail || matchesPhone;
-      }
-      return true;
-    });
-  }, [partners, statusFilter, searchQuery]);
-
   // Save Partner (Add or Edit)
-  const handleSavePartner = (partnerData: Partial<Partner>) => {
-    if (editingPartner) {
-      setPartners((prev) =>
-        prev.map((p) =>
-          p.id === editingPartner.id ? { ...p, ...partnerData } : p
-        )
-      );
-      if (selectedPartnerForBrands?.id === editingPartner.id) {
-        setSelectedPartnerForBrands((prev) => (prev ? { ...prev, ...partnerData } : null));
-      }
-    } else {
-      const newPartner: Partner = {
-        id: `partner-${Date.now()}`,
-        nameAr: partnerData.nameAr || 'شريك جديد',
-        nameEn: partnerData.nameEn || 'New Partner',
-        descriptionAr: partnerData.descriptionAr,
-        descriptionEn: partnerData.descriptionEn,
-        email: partnerData.email || 'partner@example.com',
-        phone: partnerData.phone || '+962790000000',
-        plan: partnerData.plan || 'basic',
-        planName: partnerData.planName || 'أساسية',
-        rating: 5.0,
-        status: 'active',
-        createdAt: new Date().toISOString().split('T')[0],
-        brandsCount: 0,
-        brands: [],
-      };
-      setPartners((prev) => [newPartner, ...prev]);
+  const handleSavePartner = async (partnerData: Partial<Partner>) => {
+    try {
+      await savePartnerToApi(partnerData as any, editingPartner?.id);
+      setIsAddEditPartnerOpen(false);
+      setEditingPartner(null);
+    } catch (err: any) {
+      alert(err?.message || 'حدث خطأ أثناء حفظ بيانات الشريك');
     }
   };
 
   // Toggle Suspend Partner Status
-  const handleConfirmSuspendPartner = () => {
+  const handleConfirmSuspendPartner = async () => {
     if (!partnerToSuspend) return;
-    const newStatus = partnerToSuspend.status === 'active' ? 'inactive' : 'active';
-    setPartners((prev) =>
-      prev.map((p) =>
-        p.id === partnerToSuspend.id ? { ...p, status: newStatus } : p
-      )
-    );
-    setPartnerToSuspend(null);
+    try {
+      await toggleStatusInApi(partnerToSuspend.id, partnerToSuspend.status);
+    } catch (err: any) {
+      alert(err?.message || 'فشل تغيير حالة الشريك');
+    } finally {
+      setPartnerToSuspend(null);
+    }
   };
 
   // Confirm Delete Partner
-  const handleConfirmDeletePartner = () => {
+  const handleConfirmDeletePartner = async () => {
     if (!partnerToDelete) return;
-    setPartners((prev) => prev.filter((p) => p.id !== partnerToDelete.id));
-    if (selectedPartnerForBrands?.id === partnerToDelete.id) {
-      setSelectedPartnerForBrands(null);
+    try {
+      await deletePartnerFromApi(partnerToDelete.id);
+      if (selectedPartnerForBrands?.id === partnerToDelete.id) {
+        setSelectedPartnerForBrands(null);
+      }
+    } catch (err: any) {
+      alert(err?.message || 'فشل حذف الشريك');
+    } finally {
+      setPartnerToDelete(null);
     }
-    setPartnerToDelete(null);
   };
 
   // Brand Operations
   const handleSaveBrand = (brandData: Partial<Brand>) => {
     if (!selectedPartnerForBrands) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -185,7 +164,7 @@ export const PartnersPage: React.FC = () => {
   // Delete Brand
   const handleDeleteBrand = (brand: Brand) => {
     if (!selectedPartnerForBrands) return;
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
         const updatedBrands = (p.brands || []).filter((b) => b.id !== brand.id);
@@ -204,7 +183,7 @@ export const PartnersPage: React.FC = () => {
   const handleToggleBrandStatus = (brand: Brand) => {
     if (!selectedPartnerForBrands) return;
     const newStatus: BrandStatus = brand.status === 'active' ? 'inactive' : 'active';
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
         const updatedBrands = (p.brands || []).map((b) =>
@@ -225,7 +204,7 @@ export const PartnersPage: React.FC = () => {
     const updatedBrand = { ...activeBrandForOffers, extraInfo };
     setActiveBrandForOffers(updatedBrand);
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -247,7 +226,7 @@ export const PartnersPage: React.FC = () => {
   const handleSaveOffer = (offerData: Partial<Offer>) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -299,7 +278,7 @@ export const PartnersPage: React.FC = () => {
   const handleDeleteOffer = (offerId: string) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -330,7 +309,7 @@ export const PartnersPage: React.FC = () => {
   const updateActiveBrandBranches = (updater: (branches: Branch[]) => Branch[]) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -389,7 +368,7 @@ export const PartnersPage: React.FC = () => {
   const handleSavePromoCode = (promoData: Partial<PromoCode>) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -458,7 +437,7 @@ export const PartnersPage: React.FC = () => {
   const handleDeletePromoCode = (promoCodeId: string) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -503,7 +482,7 @@ export const PartnersPage: React.FC = () => {
   const handleSaveJob = (jobData: Partial<JobPosition>) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -570,7 +549,7 @@ export const PartnersPage: React.FC = () => {
   const handleDeleteJob = (jobId: string) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -615,7 +594,7 @@ export const PartnersPage: React.FC = () => {
   const handleSaveMenuItem = (itemData: Partial<MenuItem>) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -694,7 +673,7 @@ export const PartnersPage: React.FC = () => {
   const handleDeleteMenuItem = (itemId: string) => {
     if (!selectedPartnerForBrands || !activeBrandForOffers) return;
 
-    setPartners((prev) =>
+    setLocalPartners((prev) =>
       prev.map((p) => {
         if (p.id !== selectedPartnerForBrands.id) return p;
 
@@ -899,12 +878,31 @@ export const PartnersPage: React.FC = () => {
   // Main Partners List View
   return (
     <div className="space-y-6 animate-fadeIn" dir="rtl">
+      {/* Error Alert Banner */}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <p className="font-bold text-sm">{error}</p>
+              <p className="text-xs text-rose-600">تعذر الاتصال بـ API الشركاء. الرجاء التأكد من الخادم والرمز التكليفي.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition cursor-pointer shrink-0"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      )}
+
       {/* Top 4 Stat Cards */}
       <PartnerStatsHeader
-        totalCount={totalCount}
-        activeCount={activeCount}
-        pendingCount={pendingCount}
-        inactiveCount={inactiveCount}
+        totalCount={stats.totalCount}
+        activeCount={stats.activeCount}
+        pendingCount={stats.pendingCount}
+        inactiveCount={stats.inactiveCount}
       />
 
       {/* Main Table Card Block */}
@@ -912,37 +910,91 @@ export const PartnersPage: React.FC = () => {
         {/* Action Filter Bar */}
         <PartnerFilterBar
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={handleSearchChange}
           statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
+          onStatusFilterChange={handleStatusFilterChange}
           onAddPartnerClick={() => {
             setEditingPartner(null);
             setIsAddEditPartnerOpen(true);
           }}
         />
 
-        {/* Partners Table */}
-        <PartnersTable
-          partners={filteredPartners}
-          onViewBrands={(partner) => setSelectedPartnerForBrands(partner)}
-          onEditPartner={(partner) => {
-            setEditingPartner(partner);
-            setIsAddEditPartnerOpen(true);
-          }}
-          onSuspendPartner={(partner) => {
-            const newStatus = partner.status === 'active' ? 'inactive' : 'active';
-            setPartners((prev) =>
-              prev.map((p) => (p.id === partner.id ? { ...p, status: newStatus } : p))
-            );
-          }}
-          onManageOffers={(partner) => {
-            setSelectedPartnerForBrands(partner);
-            if (partner.brands && partner.brands.length > 0) {
-              setActiveBrandForOffers(partner.brands[0]);
-            }
-          }}
-          onDeletePartner={(partner) => setPartnerToDelete(partner)}
-        />
+        {/* Loading Spinner or Partners Table */}
+        {loading ? (
+          <div className="p-16 flex flex-col items-center justify-center text-slate-500 gap-3">
+            <div className="w-10 h-10 border-4 border-slate-200 border-t-[#d83f2a] rounded-full animate-spin" />
+            <span className="font-bold text-sm text-slate-700">جاري تحميل بيانات الشركاء من الـ API...</span>
+          </div>
+        ) : (
+          <PartnersTable
+            partners={localPartners}
+            onViewBrands={(partner) => setSelectedPartnerForBrands(partner)}
+            onEditPartner={(partner) => {
+              setEditingPartner(partner);
+              setIsAddEditPartnerOpen(true);
+            }}
+            onSuspendPartner={(partner) => setPartnerToSuspend(partner)}
+            onManageOffers={(partner) => {
+              setSelectedPartnerForBrands(partner);
+              if (partner.brands && partner.brands.length > 0) {
+                setActiveBrandForOffers(partner.brands[0]);
+              }
+            }}
+            onDeletePartner={(partner) => setPartnerToDelete(partner)}
+          />
+        )}
+
+        {/* Pagination Bar */}
+        {!loading && paginationMeta.total > 0 && (
+          <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-600">
+            <div>
+              <span>عرض </span>
+              <span className="font-extrabold text-slate-900">{paginationMeta.from ?? (partners.length > 0 ? 1 : 0)}</span>
+              <span> إلى </span>
+              <span className="font-extrabold text-slate-900">{paginationMeta.to ?? partners.length}</span>
+              <span> من إجمالي </span>
+              <span className="font-extrabold text-[#d83f2a]">{paginationMeta.total}</span>
+              <span> شريك</span>
+            </div>
+
+            {paginationMeta.lastPage > 1 && (
+              <div className="flex items-center gap-1.5 dir-ltr">
+                {/* Previous Button */}
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page <= 1}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-bold"
+                >
+                  السابق
+                </button>
+
+                {/* Page Numbers */}
+                {Array.from({ length: paginationMeta.lastPage }, (_, i) => i + 1).map((pNum) => (
+                  <button
+                    key={pNum}
+                    onClick={() => handlePageChange(pNum)}
+                    className={`w-8 h-8 rounded-lg font-extrabold transition ${
+                      pNum === page
+                        ? 'bg-[#d83f2a] text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {pNum}
+                  </button>
+                ))}
+
+                {/* Next Button */}
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page >= paginationMeta.lastPage}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-bold"
+                >
+                  التالي
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modals */}

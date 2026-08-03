@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import type { Partner, SubscriptionPlan, PartnerStatus } from '../types/partner.types';
+import type { Partner, SubscriptionPlan, PartnerStatus, PackageItem } from '../types/partner.types';
+import { packageApiService } from '../data/api/packageApiService';
 
 interface AddEditPartnerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (partnerData: Partial<Partner>) => void;
+  onSave: (partnerData: any) => void;
   editingPartner?: Partner | null;
 }
 
@@ -24,11 +25,17 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>('basic');
+  const [selectedPackageId, setSelectedPackageId] = useState<number>(1);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [packagesList, setPackagesList] = useState<PackageItem[]>([]);
 
   const [status, setStatus] = useState<PartnerStatus>('active');
   const [password, setPassword] = useState('p@ssW0rd!2024');
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
 
   const generateNewPassword = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
@@ -45,6 +52,28 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      packageApiService
+        .fetchPackages()
+        .then((pkgs) => {
+          setPackagesList(pkgs);
+          if (pkgs.length > 0 && !editingPartner) {
+            setSelectedPackageId(pkgs[0].id);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen, editingPartner]);
+
   useEffect(() => {
     if (editingPartner) {
       setNameAr(editingPartner.nameAr || '');
@@ -55,6 +84,8 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
       setPhone(editingPartner.phone || '');
       setSelectedPlan(editingPartner.plan || 'basic');
       setStatus(editingPartner.status || 'active');
+      setImagePreview(editingPartner.avatarUrl || '');
+      setImageFile(null);
     } else {
       setNameAr('');
       setNameEn('');
@@ -64,6 +95,8 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
       setPhone('');
       setSelectedPlan('basic');
       setStatus('active');
+      setImagePreview('');
+      setImageFile(null);
     }
     generateNewPassword();
     setActiveTab('basic');
@@ -87,6 +120,8 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
     e.preventDefault();
     if (!nameAr.trim() && !nameEn.trim()) return;
 
+    const selectedPkg = packagesList.find((p) => p.id === selectedPackageId);
+
     onSave({
       nameAr: nameAr || nameEn,
       nameEn: nameEn || nameAr,
@@ -94,9 +129,14 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
       descriptionEn,
       email,
       phone,
+      password,
+      packageId: selectedPackageId,
+      billingCycle,
       plan: selectedPlan,
-      planName: getPlanName(selectedPlan),
+      planName: selectedPkg ? (isAr ? selectedPkg.nameAr : selectedPkg.nameEn) : getPlanName(selectedPlan),
       status,
+      imageFile: imageFile || undefined,
+      avatarUrl: imagePreview || editingPartner?.avatarUrl,
     });
     onClose();
   };
@@ -189,6 +229,34 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                   >
                     English
                   </button>
+                </div>
+              </div>
+
+              {/* Image / Logo Upload Section */}
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-slate-200 border border-slate-300 flex items-center justify-center shrink-0">
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isAr ? 'صورة الشريك / اللوجو' : 'Partner Logo / Image'}
+                  </label>
+                  <p className="text-[11px] text-slate-400 mb-2">
+                    {isAr ? 'اختر صورة بدقة عالية (PNG, JPG)' : 'Choose high resolution image (PNG, JPG)'}
+                  </p>
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition cursor-pointer shadow-2xs">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>{isAr ? 'رفع صورة' : 'Upload Image'}</span>
+                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                  </label>
                 </div>
               </div>
 
@@ -394,218 +462,145 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                     {isAr ? 'غير نشط' : 'Inactive'}
                   </button>
 
-                  {/* Pending Review */}
-                  <button
-                    type="button"
-                    onClick={() => setStatus('pending')}
-                    className={`py-2.5 px-4 rounded-full text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
-                      status === 'pending'
-                        ? 'border-2 border-amber-400 bg-amber-50 text-amber-700 shadow-xs'
-                        : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    {isAr ? 'قيد المراجعة' : 'Pending'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <h4 className="font-extrabold text-slate-800 text-sm mb-2">
-                {isAr ? 'باقت الاشتراك' : 'Subscription Plans'}
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* 1. Basic Plan (أساسية) */}
-                <div
-                  onClick={() => setSelectedPlan('basic')}
-                  className={`p-5 rounded-2xl border-2 transition cursor-pointer relative flex flex-col justify-between ${
-                    selectedPlan === 'basic'
-                      ? 'border-slate-800 bg-slate-50/60 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  {selectedPlan === 'basic' && (
-                    <div className={`absolute top-3 w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shadow-xs ${isAr ? 'left-3' : 'right-3'}`}>
-                      ✓
-                    </div>
-                  )}
-                  <div>
-                    <h5 className={`font-extrabold text-base ${selectedPlan === 'basic' ? 'text-slate-800' : 'text-slate-900'}`}>
-                      {isAr ? 'أساسية' : 'Basic'}
-                    </h5>
-                    <p className="text-xs text-slate-400 mb-3 font-medium">
-                      {isAr ? 'للشركاء الجدد' : 'For New Partners'}
-                    </p>
-                    <div className={`text-xl font-extrabold mb-4 ${selectedPlan === 'basic' ? 'text-slate-800' : 'text-slate-900'}`}>
-                      25 <span className="text-xs font-normal text-slate-500">{isAr ? 'د.أ / شهر' : 'JOD / month'}</span>
-                    </div>
-                    <ul className="text-xs space-y-2 font-medium">
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'basic' ? 'text-slate-800 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'basic' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'قائمة المنتجات' : 'Products List'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'basic' ? 'text-slate-800 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'basic' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'صفحة الشريك' : 'Partner Page'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'basic' ? 'text-slate-800 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'basic' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'دعم أساسي' : 'Basic Support'}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* 2. Professional Plan (احترافية) */}
-                <div
-                  onClick={() => setSelectedPlan('professional')}
-                  className={`p-5 rounded-2xl border-2 transition cursor-pointer relative flex flex-col justify-between ${
-                    selectedPlan === 'professional'
-                      ? 'border-blue-600 bg-blue-50/20 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  {selectedPlan === 'professional' && (
-                    <div className={`absolute top-3 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-xs ${isAr ? 'left-3' : 'right-3'}`}>
-                      ✓
-                    </div>
-                  )}
-                  <div>
-                    <h5 className={`font-extrabold text-base ${selectedPlan === 'professional' ? 'text-blue-600' : 'text-slate-900'}`}>
-                      {isAr ? 'احترافية' : 'Professional'}
-                    </h5>
-                    <p className="text-xs text-slate-400 mb-3 font-medium">
-                      {isAr ? 'للشركاء النشطين' : 'For Active Partners'}
-                    </p>
-                    <div className={`text-xl font-extrabold mb-4 ${selectedPlan === 'professional' ? 'text-blue-600' : 'text-slate-900'}`}>
-                      65 <span className="text-xs font-normal text-slate-500">{isAr ? 'د.أ / شهر' : 'JOD / month'}</span>
-                    </div>
-                    <ul className="text-xs space-y-2 font-medium">
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'professional' ? 'text-blue-600 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'professional' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'كل مميزات الأساسية' : 'All Basic Features'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'professional' ? 'text-blue-600 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'professional' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'العروض والخصومات' : 'Offers & Discounts'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'professional' ? 'text-blue-600 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'professional' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'إحصاءات أساسية' : 'Basic Analytics'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'professional' ? 'text-blue-600 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'professional' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'دعم متقدم' : 'Advanced Support'}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* 3. Featured Plan (مميزة) */}
-                <div
-                  onClick={() => setSelectedPlan('featured')}
-                  className={`p-5 rounded-2xl border-2 transition cursor-pointer relative flex flex-col justify-between ${
-                    selectedPlan === 'featured'
-                      ? 'border-purple-600 bg-purple-50/20 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <div className={`absolute top-3 flex items-center gap-1.5 ${isAr ? 'left-3' : 'right-3'}`}>
-                    <span className="px-2.5 py-0.5 rounded-full bg-purple-600 text-white text-[10px] font-bold">
-                      {isAr ? 'الأكثر طلباً' : 'Most Popular'}
-                    </span>
-                    {selectedPlan === 'featured' && (
-                      <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                        ✓
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <h5 className={`font-extrabold text-base ${selectedPlan === 'featured' ? 'text-purple-600' : 'text-slate-900'}`}>
-                      {isAr ? 'مميزة' : 'Featured'}
-                    </h5>
-                    <p className="text-xs text-slate-400 mb-3 font-medium">
-                      {isAr ? 'ظهور استثنائي' : 'Exceptional Visibility'}
-                    </p>
-                    <div className={`text-xl font-extrabold mb-4 ${selectedPlan === 'featured' ? 'text-purple-600' : 'text-slate-900'}`}>
-                      120 <span className="text-xs font-normal text-slate-500">{isAr ? 'د.أ / شهر' : 'JOD / month'}</span>
-                    </div>
-                    <ul className="text-xs space-y-2 font-medium">
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'featured' ? 'text-purple-600 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'featured' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'كل مميزات الاحترافية' : 'All Professional Features'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'featured' ? 'text-purple-600 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'featured' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'شارة مميز' : 'Featured Badge'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'featured' ? 'text-purple-600 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'featured' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'أولوية في البحث' : 'Search Priority'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'featured' ? 'text-purple-600 font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'featured' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'تقارير تفصيلية' : 'Detailed Reports'}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* 4. Enterprise Plan (مؤسسية) */}
-                <div
-                  onClick={() => setSelectedPlan('enterprise')}
-                  className={`p-5 rounded-2xl border-2 transition cursor-pointer relative flex flex-col justify-between ${
-                    selectedPlan === 'enterprise'
-                      ? 'border-[#d83f2a] bg-red-50/20 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <div className={`absolute top-3 flex items-center gap-1.5 ${isAr ? 'left-3' : 'right-3'}`}>
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#d83f2a] text-white text-[10px] font-bold tracking-wider">
-                      VIP
-                    </span>
-                    {selectedPlan === 'enterprise' && (
-                      <div className="w-5 h-5 rounded-full bg-[#d83f2a] text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                        ✓
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <h5 className={`font-extrabold text-base ${selectedPlan === 'enterprise' ? 'text-[#d83f2a]' : 'text-slate-900'}`}>
-                      {isAr ? 'مؤسسية' : 'Enterprise'}
-                    </h5>
-                    <p className="text-xs text-slate-400 mb-3 font-medium">
-                      {isAr ? 'للشركات الكبرى' : 'For Enterprises'}
-                    </p>
-                    <div className={`text-xl font-extrabold mb-4 ${selectedPlan === 'enterprise' ? 'text-[#d83f2a]' : 'text-slate-900'}`}>
-                      220 <span className="text-xs font-normal text-slate-500">{isAr ? 'د.أ / شهر' : 'JOD / month'}</span>
-                    </div>
-                    <ul className="text-xs space-y-2 font-medium">
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'enterprise' ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'enterprise' ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'كل مميزات المميزة' : 'All Featured Features'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'enterprise' ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'enterprise' ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'مدير حساب مخصص' : 'Dedicated Account Manager'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'enterprise' ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'enterprise' ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'تكامل API' : 'API Integration'}
-                      </li>
-                      <li className={`flex items-center gap-2 ${selectedPlan === 'enterprise' ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${selectedPlan === 'enterprise' ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                        {isAr ? 'إعلانات مدفوعة' : 'Paid Ads'}
-                      </li>
-                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => setStatus('pending')}
+                      className={`py-2.5 px-4 rounded-full text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
+                        status === 'pending'
+                          ? 'border-2 border-amber-400 bg-amber-50 text-amber-700 shadow-xs'
+                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                      {isAr ? 'قيد المراجعة' : 'Pending'}
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-5">
+                {/* Billing Cycle Option Header */}
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm">
+                      {isAr ? 'دورة الفوترة' : 'Billing Cycle'}
+                    </h4>
+                    <p className="text-xs text-slate-400 font-medium">
+                      {isAr ? 'اختر الخطة الزمنية لدفع الاشتراك' : 'Choose subscription billing frequency'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-200/60 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setBillingCycle('monthly')}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+                        billingCycle === 'monthly'
+                          ? 'bg-white text-[#d83f2a] shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {isAr ? 'شهري (Monthly)' : 'Monthly'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBillingCycle('yearly')}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+                        billingCycle === 'yearly'
+                          ? 'bg-white text-[#d83f2a] shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {isAr ? 'سنوي (Yearly)' : 'Yearly'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dynamic Packages Cards fetched from API */}
+                <div>
+                  <h4 className="font-extrabold text-slate-800 text-sm mb-3">
+                    {isAr ? 'باقات الاشتراك المتاحة' : 'Available Subscription Packages'}
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {packagesList.length > 0 ? (
+                      packagesList.map((pkg) => {
+                        const isSelected = selectedPackageId === pkg.id;
+                        const price = billingCycle === 'monthly' ? pkg.monthlyPrice : pkg.yearlyPrice;
+                        const cycleUnit = billingCycle === 'monthly' ? (isAr ? 'د.أ / شهر' : 'JOD / month') : (isAr ? 'د.أ / سنة' : 'JOD / year');
+                        const name = isAr ? pkg.nameAr : pkg.nameEn;
+                        const desc = isAr ? pkg.descriptionAr : pkg.descriptionEn;
+
+                        return (
+                          <div
+                            key={pkg.id}
+                            onClick={() => setSelectedPackageId(pkg.id)}
+                            className={`p-5 rounded-2xl border-2 transition cursor-pointer relative flex flex-col justify-between ${
+                              isSelected
+                                ? 'border-[#d83f2a] bg-red-50/30 shadow-md shadow-[#d83f2a]/10'
+                                : 'border-slate-200 hover:border-slate-300 bg-white'
+                            }`}
+                          >
+                            {isSelected && (
+                              <div className={`absolute top-3 w-6 h-6 rounded-full bg-[#d83f2a] text-white flex items-center justify-center text-xs font-bold shadow-2xs ${isAr ? 'left-3' : 'right-3'}`}>
+                                ✓
+                              </div>
+                            )}
+
+                            {pkg.badge && (
+                              <div className={`absolute top-3 ${isSelected ? (isAr ? 'left-10' : 'right-10') : (isAr ? 'left-3' : 'right-3')}`}>
+                                <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-2xs">
+                                  {pkg.badge}
+                                </span>
+                              </div>
+                            )}
+
+                            <div>
+                              <h5 className={`font-extrabold text-base ${isSelected ? 'text-[#d83f2a]' : 'text-slate-900'}`}>
+                                {name}
+                              </h5>
+                              {desc && (
+                                <p className="text-xs text-slate-400 mb-3 font-medium line-clamp-2">
+                                  {desc}
+                                </p>
+                              )}
+                              <div className={`text-2xl font-extrabold my-3 ${isSelected ? 'text-[#d83f2a]' : 'text-slate-900'}`}>
+                                {price} <span className="text-xs font-normal text-slate-500">{cycleUnit}</span>
+                              </div>
+                              <ul className="text-xs space-y-2 font-medium">
+                                <li className={`flex items-center gap-2 ${isSelected ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
+                                  {isAr ? 'لوحة تحكم كاملة للشريك' : 'Full partner dashboard access'}
+                                </li>
+                                <li className={`flex items-center gap-2 ${isSelected ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
+                                  {isAr ? 'إمكانية إضافة علامات تجارية وفروع' : 'Add brands & branches'}
+                                </li>
+                                <li className={`flex items-center gap-2 ${isSelected ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
+                                  {isAr ? 'دعم فني وتحديثات مستمرة' : 'Technical support & updates'}
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div
+                        onClick={() => setSelectedPackageId(1)}
+                        className="p-5 rounded-2xl border-2 border-[#d83f2a] bg-red-50/30 shadow-md shadow-[#d83f2a]/10 cursor-pointer"
+                      >
+                        <h5 className="font-extrabold text-base text-[#d83f2a]">
+                          {isAr ? 'زلمة على الخفيف' : 'Zalameh Ala El-Khafeef'}
+                        </h5>
+                        <div className="text-2xl font-extrabold my-3 text-[#d83f2a]">
+                          9 <span className="text-xs font-normal text-slate-500">{billingCycle === 'monthly' ? (isAr ? 'د.أ / شهر' : 'JOD / month') : (isAr ? 'د.أ / سنة' : 'JOD / year')}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
           {/* Footer Buttons */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">

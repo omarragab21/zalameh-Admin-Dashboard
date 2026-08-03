@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import type { Category, SubCategory, PaginationMeta } from '../types/category.types';
+import type { Category, SubCategory, PaginationMeta, CategoryFilterStatus } from '../types/category.types';
 
 interface CategoryTableProps {
   categories: Category[];
   paginationMeta?: PaginationMeta;
+  statusFilter?: CategoryFilterStatus;
+  totalAllCategoriesCount?: number;
   onPageChange?: (page: number) => void;
   onEditCategory: (category: Category) => void;
   onDeleteCategory: (categoryId: string) => void;
@@ -19,6 +21,8 @@ interface CategoryTableProps {
 export const CategoryTable: React.FC<CategoryTableProps> = ({
   categories,
   paginationMeta,
+  statusFilter = 'all',
+  totalAllCategoriesCount,
   onPageChange,
   onEditCategory,
   onDeleteCategory,
@@ -60,22 +64,41 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
 
   // Pagination calculation (Supports both Server Pagination and Local Client Pagination)
   const isServerPaginated = Boolean(paginationMeta);
-  const totalItems = paginationMeta ? paginationMeta.total : categories.length;
-  const itemsPerPage = paginationMeta ? paginationMeta.perPage : localPerPage;
-  const activePage = paginationMeta ? paginationMeta.currentPage : Math.min(localPage, Math.ceil(totalItems / itemsPerPage) || 1);
-  const totalPages = paginationMeta ? paginationMeta.lastPage : Math.ceil(totalItems / itemsPerPage) || 1;
+  const isFiltered = statusFilter !== 'all';
 
-  const currentCategories = isServerPaginated
+  const totalFilteredItems = isFiltered
+    ? categories.length
+    : (paginationMeta ? paginationMeta.total : categories.length);
+
+  const totalOverallItems = totalAllCategoriesCount ?? (paginationMeta ? paginationMeta.total : categories.length);
+
+  const itemsPerPage = paginationMeta ? paginationMeta.perPage : localPerPage;
+  const activePage = paginationMeta && !isFiltered
+    ? paginationMeta.currentPage
+    : Math.min(localPage, Math.ceil(totalFilteredItems / itemsPerPage) || 1);
+  const totalPages = paginationMeta && !isFiltered
+    ? paginationMeta.lastPage
+    : Math.ceil(totalFilteredItems / itemsPerPage) || 1;
+
+  const currentCategories = isServerPaginated && !isFiltered
     ? categories
     : categories.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage);
 
-  const displayFrom = paginationMeta
-    ? (paginationMeta.from ?? (totalItems > 0 ? (activePage - 1) * itemsPerPage + 1 : 0))
-    : (totalItems === 0 ? 0 : (activePage - 1) * itemsPerPage + 1);
+  const displayFrom = totalFilteredItems === 0
+    ? 0
+    : (paginationMeta && !isFiltered
+        ? (paginationMeta.from ?? (activePage - 1) * itemsPerPage + 1)
+        : (activePage - 1) * itemsPerPage + 1);
 
-  const displayTo = paginationMeta
-    ? (paginationMeta.to ?? Math.min(activePage * itemsPerPage, totalItems))
-    : Math.min(activePage * itemsPerPage, totalItems);
+  const displayTo = totalFilteredItems === 0
+    ? 0
+    : (paginationMeta && !isFiltered
+        ? (paginationMeta.to ?? Math.min(activePage * itemsPerPage, totalFilteredItems))
+        : Math.min(activePage * itemsPerPage, totalFilteredItems));
+
+  const displayText = displayFrom === displayTo
+    ? `${displayFrom}`
+    : `${displayFrom} إلى ${displayTo}`;
 
   const handlePageSelect = (newPage: number) => {
     if (onPageChange) {
@@ -432,7 +455,28 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
       {/* Table Footer with Pagination */}
       <div className="p-4 bg-slate-50/50 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-semibold" dir="rtl">
         <div>
-          عرض {displayFrom}-{displayTo} من أصل {totalItems} فئة رئيسية
+          {statusFilter === 'active' ? (
+            <span>
+              عرض <span className="font-extrabold text-slate-900">{displayText}</span> من أصل{' '}
+              <span className="font-extrabold text-emerald-600">{totalFilteredItems}</span> فئة نشطة
+              {totalOverallItems > 0 && totalOverallItems !== totalFilteredItems && (
+                <span className="text-slate-500 font-bold mr-1"> (من إجمالي {totalOverallItems} فئة)</span>
+              )}
+            </span>
+          ) : statusFilter === 'inactive' ? (
+            <span>
+              عرض <span className="font-extrabold text-slate-900">{displayText}</span> من أصل{' '}
+              <span className="font-extrabold text-slate-800">{totalFilteredItems}</span> فئة غير نشطة
+              {totalOverallItems > 0 && totalOverallItems !== totalFilteredItems && (
+                <span className="text-slate-500 font-bold mr-1"> (من إجمالي {totalOverallItems} فئة)</span>
+              )}
+            </span>
+          ) : (
+            <span>
+              عرض <span className="font-extrabold text-slate-900">{displayText}</span> من إجمالي{' '}
+              <span className="font-extrabold text-[#d83f2a]">{totalOverallItems}</span> فئة رئيسية
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5" dir="rtl">

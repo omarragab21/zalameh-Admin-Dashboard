@@ -254,7 +254,14 @@ export const categoryApiService = {
     if (page) params.set('page', String(page));
     if (perPage) params.set('per_page', String(perPage));
     if (search && search.trim()) params.set('search', search.trim());
-    if (status && status !== 'all') params.set('status', status);
+    if (status && status !== 'all') {
+      params.set('status', status);
+      if (status === 'active') {
+        params.set('is_active', '1');
+      } else if (status === 'inactive') {
+        params.set('is_active', '0');
+      }
+    }
 
     const queryStr = params.toString();
     const url = `${API_BASE_URL}/categories${queryStr ? `?${queryStr}` : ''}`;
@@ -543,30 +550,48 @@ export const categoryApiService = {
   async updateCategory(id: string, payload: UpdateCategoryPayload): Promise<Category> {
     const url = `${API_BASE_URL}/categories/${encodeURIComponent(id)}`;
     const headers = this.getHeaders();
-    const formData = new FormData();
+    let body: any;
+    let method = 'PUT';
 
-    // Append ONLY the fields that are actually provided in the update payload
-    if (payload.nameAr !== undefined) formData.append('name_ar', payload.nameAr);
-    if (payload.nameEn !== undefined) formData.append('name_en', payload.nameEn);
-    if (payload.descriptionAr !== undefined) formData.append('description_ar', payload.descriptionAr);
-    if (payload.descriptionEn !== undefined) formData.append('description_en', payload.descriptionEn);
-    
-    if (payload.status !== undefined) {
-      const isActiveBool = payload.status === 'active';
-      formData.append('status', payload.status);
-      formData.append('is_active', isActiveBool ? 'true' : 'false');
-    }
+    const isActiveBool = payload.status === 'active';
 
     if (payload.image instanceof File) {
+      method = 'POST';
+      const formData = new FormData();
+      formData.append('_method', 'PUT');
+      if (payload.nameAr !== undefined) formData.append('name_ar', payload.nameAr);
+      if (payload.nameEn !== undefined) formData.append('name_en', payload.nameEn);
+      if (payload.descriptionAr !== undefined) formData.append('description_ar', payload.descriptionAr);
+      if (payload.descriptionEn !== undefined) formData.append('description_en', payload.descriptionEn);
+      if (payload.status !== undefined) {
+        formData.append('status', payload.status);
+        formData.append('is_active', isActiveBool ? '1' : '0');
+      }
       formData.append('image_file', payload.image);
       formData.append('image', payload.image);
+      body = formData;
+    } else {
+      (headers as Record<string, string>)['Content-Type'] = 'application/json';
+      const bodyObj: Record<string, any> = { _method: 'PUT' };
+      if (payload.nameAr !== undefined) bodyObj.name_ar = payload.nameAr;
+      if (payload.nameEn !== undefined) bodyObj.name_en = payload.nameEn;
+      if (payload.descriptionAr !== undefined) bodyObj.description_ar = payload.descriptionAr;
+      if (payload.descriptionEn !== undefined) bodyObj.description_en = payload.descriptionEn;
+      if (payload.status !== undefined) {
+        bodyObj.status = payload.status;
+        bodyObj.is_active = isActiveBool ? 1 : 0;
+      }
+      if (typeof payload.image === 'string' && payload.image) {
+        bodyObj.image = payload.image;
+      }
+      body = JSON.stringify(bodyObj);
     }
 
     try {
       const response = await fetch(url, {
-        method: 'PUT',
+        method,
         headers,
-        body: formData,
+        body,
       });
 
       if (!response.ok) {
@@ -594,8 +619,8 @@ export const categoryApiService = {
 
       const rawObj = resData.data || resData;
       const normalizedRawObj = rawObj && typeof rawObj === 'object' && !Array.isArray(rawObj)
-        ? { ...rawObj, id: rawObj.id ?? id }
-        : { id };
+        ? { ...rawObj, id: rawObj.id ?? id, is_active: payload.status !== undefined ? isActiveBool : rawObj.is_active }
+        : { id, is_active: isActiveBool };
       return mapCategoryFromApi(normalizedRawObj);
     } catch (err: any) {
       sendTerminalLog({
@@ -718,31 +743,50 @@ export const categoryApiService = {
   ): Promise<SubCategory> {
     const url = `${API_BASE_URL}/sub_categories/${encodeURIComponent(subCategoryId)}`;
     const headers = this.getHeaders();
-    const formData = new FormData();
+    let body: any;
+    let method = 'PUT';
 
-    formData.append('category_id', categoryId);
-    if (payload.nameAr !== undefined) formData.append('name_ar', payload.nameAr);
-    if (payload.nameEn !== undefined) formData.append('name_en', payload.nameEn);
-    if (payload.descriptionAr !== undefined) formData.append('description_ar', payload.descriptionAr);
-    if (payload.descriptionEn !== undefined) formData.append('description_en', payload.descriptionEn);
-    
-    if (payload.status !== undefined) {
-      const isActiveBool = payload.status === 'active';
-      formData.append('status', payload.status);
-      formData.append('is_active', isActiveBool ? 'true' : 'false');
-    }
-
+    const isActiveBool = payload.status === 'active';
     const imageFile = payload.imageFile || (payload.image instanceof File ? payload.image : undefined);
+
     if (imageFile) {
+      method = 'POST';
+      const formData = new FormData();
+      formData.append('_method', 'PUT');
+      formData.append('category_id', categoryId);
+      if (payload.nameAr !== undefined) formData.append('name_ar', payload.nameAr);
+      if (payload.nameEn !== undefined) formData.append('name_en', payload.nameEn);
+      if (payload.descriptionAr !== undefined) formData.append('description_ar', payload.descriptionAr);
+      if (payload.descriptionEn !== undefined) formData.append('description_en', payload.descriptionEn);
+      if (payload.status !== undefined) {
+        formData.append('status', payload.status);
+        formData.append('is_active', isActiveBool ? '1' : '0');
+      }
       formData.append('image_file', imageFile);
       formData.append('image', imageFile);
+      body = formData;
+    } else {
+      (headers as Record<string, string>)['Content-Type'] = 'application/json';
+      const bodyObj: Record<string, any> = { _method: 'PUT', category_id: categoryId };
+      if (payload.nameAr !== undefined) bodyObj.name_ar = payload.nameAr;
+      if (payload.nameEn !== undefined) bodyObj.name_en = payload.nameEn;
+      if (payload.descriptionAr !== undefined) bodyObj.description_ar = payload.descriptionAr;
+      if (payload.descriptionEn !== undefined) bodyObj.description_en = payload.descriptionEn;
+      if (payload.status !== undefined) {
+        bodyObj.status = payload.status;
+        bodyObj.is_active = isActiveBool ? 1 : 0;
+      }
+      if (typeof payload.image === 'string' && payload.image) {
+        bodyObj.image = payload.image;
+      }
+      body = JSON.stringify(bodyObj);
     }
 
     try {
       const response = await fetch(url, {
-        method: 'PUT',
+        method,
         headers,
-        body: formData,
+        body,
       });
 
       if (!response.ok) {
@@ -773,9 +817,10 @@ export const categoryApiService = {
         ? {
             ...rawObj,
             id: rawObj.id ?? subCategoryId,
-            category_id: rawObj.category_id ?? rawObj.parent_id ?? categoryId,
+            category_id: rawObj.category_id ?? categoryId,
+            is_active: payload.status !== undefined ? isActiveBool : rawObj.is_active,
           }
-        : { id: subCategoryId, category_id: categoryId };
+        : { id: subCategoryId, category_id: categoryId, is_active: isActiveBool };
       return mapSubCategoryFromApi(normalizedRawObj, categoryId);
     } catch (err: any) {
       sendTerminalLog({

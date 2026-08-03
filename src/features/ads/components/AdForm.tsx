@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { AdItem, AdvertiserType, AdStatus, AdPlacementKey, AdPlacementConfig } from '../types/ad.types';
 import { ALL_PLACEMENTS_INFO } from '../data/mockAds';
-import { initialPartners } from '../../partners/data/mockPartners';
+import { partnerApiService } from '../../partners/data/api/partnerApiService';
+import type { Partner } from '../../partners/types/partner.types';
 
 interface AdFormProps {
   initialData?: AdItem | null;
@@ -14,6 +15,16 @@ export const AdForm: React.FC<AdFormProps> = ({
   onSave,
   onCancel,
 }) => {
+  const [partnersList, setPartnersList] = useState<Partner[]>([]);
+
+  React.useEffect(() => {
+    partnerApiService.fetchPartnersPage(1, 100).then((res) => {
+      setPartnersList(res.partners);
+    }).catch(() => {
+      // Fallback empty
+    });
+  }, []);
+
   // 1. Advertiser Info
   const [advertiserType, setAdvertiserType] = useState<AdvertiserType>(
     initialData?.advertiserType || 'STORE'
@@ -66,8 +77,8 @@ export const AdForm: React.FC<AdFormProps> = ({
     return res;
   });
 
-  // Store options from mockPartners
-  const storesList = initialPartners.map((p) => ({
+  // Store options from partnersList
+  const storesList = partnersList.map((p) => ({
     id: p.id,
     name: p.nameAr,
   }));

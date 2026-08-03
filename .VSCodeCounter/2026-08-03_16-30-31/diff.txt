@@ -1,0 +1,137 @@
+Date : 2026-08-03 16:30:31
+Directory : /Users/omarragab/Projects/zalameh_dashboard_app
+Total : 60 files,  9089 codes, 287 comments, 786 blanks, all 10162 lines
+
+Languages
++----------------+------------+------------+------------+------------+------------+
+| language       | files      | code       | comment    | blank      | total      |
++----------------+------------+------------+------------+------------+------------+
+| TypeScript JSX |         34 |      5,242 |        263 |        416 |      5,921 |
+| TypeScript     |         21 |      1,777 |         24 |        291 |      2,092 |
+| XML            |          1 |      1,283 |          0 |          1 |      1,284 |
+| JavaScript     |          1 |        703 |          0 |         77 |        780 |
+| JSON           |          3 |         84 |          0 |          1 |         85 |
++----------------+------------+------------+------------+------------+------------+
+
+Directories
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                | files      | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                   |         60 |      9,089 |        287 |        786 |     10,162 |
+| . (Files)                                                                                                           |          4 |         93 |          0 |          1 |         94 |
+| public                                                                                                              |          1 |      1,283 |          0 |          1 |      1,284 |
+| src                                                                                                                 |         54 |      7,010 |        287 |        707 |      8,004 |
+| src (Files)                                                                                                         |          1 |          0 |          0 |          1 |          1 |
+| src/core                                                                                                            |          4 |        142 |         12 |         25 |        179 |
+| src/core/auth                                                                                                       |          1 |         26 |          2 |          4 |         32 |
+| src/core/types                                                                                                      |          1 |          1 |          0 |          0 |          1 |
+| src/core/utils                                                                                                      |          2 |        115 |         10 |         21 |        146 |
+| src/features                                                                                                        |         49 |      6,868 |        275 |        681 |      7,824 |
+| src/features/ads                                                                                                    |          9 |      1,441 |         81 |        112 |      1,634 |
+| src/features/ads/components                                                                                         |          6 |        995 |         59 |         84 |      1,138 |
+| src/features/ads/data                                                                                               |          1 |        257 |          0 |          3 |        260 |
+| src/features/ads/pages                                                                                              |          1 |        155 |         22 |         19 |        196 |
+| src/features/ads/types                                                                                              |          1 |         34 |          0 |          6 |         40 |
+| src/features/categories                                                                                             |         15 |      1,723 |         19 |        229 |      1,971 |
+| src/features/categories/components                                                                                  |          7 |        725 |         12 |         65 |        802 |
+| src/features/categories/data                                                                                        |          3 |        492 |          4 |        113 |        609 |
+| src/features/categories/data (Files)                                                                                |          1 |       -364 |          1 |          0 |       -363 |
+| src/features/categories/data/api                                                                                    |          1 |        776 |          3 |         98 |        877 |
+| src/features/categories/data/repositories                                                                           |          1 |         80 |          0 |         15 |         95 |
+| src/features/categories/domain                                                                                      |          2 |        153 |          0 |         23 |        176 |
+| src/features/categories/domain/entities                                                                             |          1 |         80 |          0 |         10 |         90 |
+| src/features/categories/domain/repositories                                                                         |          1 |         73 |          0 |         13 |         86 |
+| src/features/categories/pages                                                                                       |          1 |        123 |         -1 |          4 |        126 |
+| src/features/categories/presentation                                                                                |          1 |        250 |          4 |         26 |        280 |
+| src/features/categories/presentation/hooks                                                                          |          1 |        250 |          4 |         26 |        280 |
+| src/features/categories/types                                                                                       |          1 |        -20 |          0 |         -2 |        -22 |
+| src/features/dashboard                                                                                              |          2 |        118 |          6 |         10 |        134 |
+| src/features/dashboard/components                                                                                   |          1 |         75 |          2 |          6 |         83 |
+| src/features/dashboard/pages                                                                                        |          1 |         43 |          4 |          4 |         51 |
+| src/features/finance                                                                                                |          6 |      2,057 |        123 |        147 |      2,327 |
+| src/features/finance/components                                                                                     |          5 |      2,015 |        124 |        147 |      2,286 |
+| src/features/finance/pages                                                                                          |          1 |         42 |         -1 |          0 |         41 |
+| src/features/packages                                                                                               |          1 |          2 |          0 |          0 |          2 |
+| src/features/packages/components                                                                                    |          1 |          2 |          0 |          0 |          2 |
+| src/features/partners                                                                                               |         16 |      1,527 |         46 |        183 |      1,756 |
+| src/features/partners/components                                                                                    |          8 |        865 |         38 |         65 |        968 |
+| src/features/partners/data                                                                                          |          3 |        204 |          0 |         59 |        263 |
+| src/features/partners/data (Files)                                                                                  |          1 |       -159 |          0 |          0 |       -159 |
+| src/features/partners/data/api                                                                                      |          1 |        297 |          0 |         47 |        344 |
+| src/features/partners/data/repositories                                                                             |          1 |         66 |          0 |         12 |         78 |
+| src/features/partners/domain                                                                                        |          2 |        263 |          0 |         36 |        299 |
+| src/features/partners/domain/entities                                                                               |          1 |        215 |          0 |         27 |        242 |
+| src/features/partners/domain/repositories                                                                           |          1 |         48 |          0 |          9 |         57 |
+| src/features/partners/pages                                                                                         |          1 |        202 |          4 |         21 |        227 |
+| src/features/partners/presentation                                                                                  |          1 |        131 |          4 |         20 |        155 |
+| src/features/partners/presentation/hooks                                                                            |          1 |        131 |          4 |         20 |        155 |
+| src/features/partners/types                                                                                         |          1 |       -138 |          0 |        -18 |       -156 |
+| tests                                                                                                               |          1 |        703 |          0 |         77 |        780 |
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++---------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| filename                                                                                                            | language       | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| /Users/omarragab/Projects/zalameh_dashboard_app/package-lock.json                                                   | JSON           |         62 |          0 |          0 |         62 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/package.json                                                        | JSON           |          6 |          0 |          0 |          6 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/public/snapchat.svg                                                 | XML            |      1,283 |          0 |          1 |      1,284 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/core/auth/authService.ts                                        | TypeScript     |         26 |          2 |          4 |         32 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/core/types/auth.types.ts                                        | TypeScript     |          1 |          0 |          0 |          1 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/core/utils/securityUtils.ts                                     | TypeScript     |        100 |          8 |         18 |        126 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/core/utils/terminalLogger.ts                                    | TypeScript     |         15 |          2 |          3 |         20 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/components/AdDetailModal.tsx                       | TypeScript JSX |        109 |          6 |         10 |        125 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/components/AdForm.tsx                              | TypeScript JSX |        447 |         29 |         34 |        510 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/components/AdsFilterBar.tsx                        | TypeScript JSX |         92 |          4 |          6 |        102 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/components/AdsStatsOverview.tsx                    | TypeScript JSX |         79 |          8 |         10 |         97 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/components/AdsTable.tsx                            | TypeScript JSX |        229 |         12 |         19 |        260 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/components/DeleteAdModal.tsx                       | TypeScript JSX |         39 |          0 |          5 |         44 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/data/mockAds.ts                                    | TypeScript     |        257 |          0 |          3 |        260 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/pages/AdsPage.tsx                                  | TypeScript JSX |        155 |         22 |         19 |        196 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/ads/types/ad.types.ts                                  | TypeScript     |         34 |          0 |          6 |         40 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/components/AddCategoryModal.tsx             | TypeScript JSX |        193 |          5 |         18 |        216 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/components/AddSubCategoryModal.tsx          | TypeScript JSX |         87 |          2 |          6 |         95 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/components/CategoryDetailModal.tsx          | TypeScript JSX |         32 |          0 |          1 |         33 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/components/CategoryTable.tsx                | TypeScript JSX |        120 |         -2 |         10 |        128 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/components/DeleteConfirmModal.tsx           | TypeScript JSX |          1 |          0 |          0 |          1 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/components/ImageCropModal.tsx               | TypeScript JSX |        277 |          7 |         29 |        313 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/components/SubCategoryDetailModal.tsx       | TypeScript JSX |         15 |          0 |          1 |         16 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/data/api/categoryApiService.ts              | TypeScript     |        776 |          3 |         98 |        877 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/data/mockCategories.ts                      | TypeScript     |       -364 |          1 |          0 |       -363 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/data/repositories/categoryRepositoryImpl.ts | TypeScript     |         80 |          0 |         15 |         95 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/domain/entities/category.entity.ts          | TypeScript     |         80 |          0 |         10 |         90 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/domain/repositories/category.repository.ts  | TypeScript     |         73 |          0 |         13 |         86 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/pages/CategoriesPage.tsx                    | TypeScript JSX |        123 |         -1 |          4 |        126 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/presentation/hooks/useCategories.ts         | TypeScript     |        250 |          4 |         26 |        280 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/categories/types/category.types.ts                     | TypeScript     |        -20 |          0 |         -2 |        -22 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/dashboard/components/DashboardSidebar.tsx              | TypeScript JSX |         75 |          2 |          6 |         83 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/dashboard/pages/DashboardPage.tsx                      | TypeScript JSX |         43 |          4 |          4 |         51 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/finance/components/FinanceOverviewTab.tsx              | TypeScript JSX |        223 |         13 |         13 |        249 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/finance/components/FinancePaymentsTab.tsx              | TypeScript JSX |        219 |         19 |         20 |        258 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/finance/components/FinanceRenewalsTab.tsx              | TypeScript JSX |        366 |         24 |         27 |        417 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/finance/components/FinanceReportsTab.tsx               | TypeScript JSX |        339 |         31 |         24 |        394 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/finance/components/FinanceSubscriptionsTab.tsx         | TypeScript JSX |        868 |         37 |         63 |        968 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/finance/pages/FinancePage.tsx                          | TypeScript JSX |         42 |         -1 |          0 |         41 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/packages/components/AddEditPackageModal.tsx            | TypeScript JSX |          2 |          0 |          0 |          2 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditBranchModal.tsx             | TypeScript JSX |         38 |          1 |          1 |         40 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditJobModal.tsx                | TypeScript JSX |        269 |         13 |         29 |        311 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditMenuItemModal.tsx           | TypeScript JSX |        257 |         13 |         19 |        289 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/AddEditPartnerModal.tsx            | TypeScript JSX |         -1 |         -1 |          0 |         -2 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/BrandDetailView.tsx                | TypeScript JSX |        292 |          9 |         15 |        316 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/PartnerBrandsView.tsx              | TypeScript JSX |         10 |          2 |          1 |         13 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/PartnerSocialLinks.tsx             | TypeScript JSX |         -8 |          1 |          0 |         -7 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/components/PartnersTable.tsx                  | TypeScript JSX |          8 |          0 |          0 |          8 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/data/api/partnerApiService.ts                 | TypeScript     |        297 |          0 |         47 |        344 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/data/mockPartners.ts                          | TypeScript     |       -159 |          0 |          0 |       -159 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/data/repositories/partnerRepositoryImpl.ts    | TypeScript     |         66 |          0 |         12 |         78 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/domain/entities/partner.entity.ts             | TypeScript     |        215 |          0 |         27 |        242 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/domain/repositories/partner.repository.ts     | TypeScript     |         48 |          0 |          9 |         57 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/pages/PartnersPage.tsx                        | TypeScript JSX |        202 |          4 |         21 |        227 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/presentation/hooks/usePartners.ts             | TypeScript     |        131 |          4 |         20 |        155 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/features/partners/types/partner.types.ts                        | TypeScript     |       -138 |          0 |        -18 |       -156 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/src/main.tsx                                                        | TypeScript JSX |          0 |          0 |          1 |          1 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/tests/categories.integration.test.mjs                               | JavaScript     |        703 |          0 |         77 |        780 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/vercel.json                                                         | JSON           |         16 |          0 |          1 |         17 |
+| /Users/omarragab/Projects/zalameh_dashboard_app/vite.config.ts                                                      | TypeScript     |          9 |          0 |          0 |          9 |
+| Total                                                                                                               |                |      9,089 |        287 |        786 |     10,162 |
++---------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
