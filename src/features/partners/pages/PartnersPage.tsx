@@ -14,8 +14,10 @@ import { AddEditJobModal } from '../components/AddEditJobModal';
 import { AddEditMenuItemModal } from '../components/AddEditMenuItemModal';
 import { SuspendPartnerModal } from '../components/SuspendPartnerModal';
 import { DeletePartnerModal } from '../components/DeletePartnerModal';
+import { DeleteBrandModal } from '../components/DeleteBrandModal';
 
 import { usePartners } from '../presentation/hooks/usePartners';
+import { brandApiService } from '../data/api/brandApiService';
 
 export const PartnersPage: React.FC = () => {
   const {
@@ -45,6 +47,21 @@ export const PartnersPage: React.FC = () => {
   // Active View State (List View vs Detail Brands View)
   const [selectedPartnerForBrands, setSelectedPartnerForBrands] = useState<Partner | null>(null);
 
+  useEffect(() => {
+    if (!selectedPartnerForBrands?.id) return;
+    brandApiService
+      .fetchBrandsByPartnerId(selectedPartnerForBrands.id)
+      .then((fetchedBrands) => {
+        setSelectedPartnerForBrands((prev) => (prev ? { ...prev, brands: fetchedBrands, brandsCount: fetchedBrands.length } : null));
+        setLocalPartners((prev) =>
+          prev.map((p) => (p.id === selectedPartnerForBrands.id ? { ...p, brands: fetchedBrands, brandsCount: fetchedBrands.length } : p))
+        );
+      })
+      .catch(() => {
+        // keep local state if fetch fails
+      });
+  }, [selectedPartnerForBrands?.id]);
+
   // Modals state
   const [isAddEditPartnerOpen, setIsAddEditPartnerOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
@@ -55,6 +72,7 @@ export const PartnersPage: React.FC = () => {
   // Brand Modals state
   const [isAddEditBrandOpen, setIsAddEditBrandOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
+  const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
 
   // Offers Modals state
   const [activeBrandForOffers, setActiveBrandForOffers] = useState<Brand | null>(null);
@@ -92,7 +110,7 @@ export const PartnersPage: React.FC = () => {
   const handleConfirmSuspendPartner = async () => {
     if (!partnerToSuspend) return;
     try {
-      await toggleStatusInApi(partnerToSuspend.id, partnerToSuspend.status);
+      await toggleStatusInApi(partnerToSuspend.id, partnerToSuspend.status, partnerToSuspend);
     } catch (err: any) {
       alert(err?.message || 'فشل تغيير حالة الشريك');
     } finally {
@@ -116,67 +134,82 @@ export const PartnersPage: React.FC = () => {
   };
 
   // Brand Operations
-  const handleSaveBrand = (brandData: Partial<Brand>) => {
+  const handleSaveBrand = async (brandData: Partial<Brand>) => {
     if (!selectedPartnerForBrands) return;
 
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
+    try {
+      let savedBrand: Brand;
+      if (editingBrand) {
+        savedBrand = await brandApiService.updateBrand(editingBrand.id, {
+          ...brandData,
+          partnerId: selectedPartnerForBrands.id,
+        });
+      } else {
+        savedBrand = await brandApiService.createBrand({
+          ...brandData,
+          partnerId: selectedPartnerForBrands.id,
+        });
+      }
 
-        let currentBrands = [...(p.brands || [])];
-        if (editingBrand) {
-          currentBrands = currentBrands.map((b) =>
-            b.id === editingBrand.id ? { ...b, ...brandData } : b
-          );
-        } else {
-          const newBrand: Brand = {
-            id: `brand-${Date.now()}`,
-            partnerId: p.id,
-            nameAr: brandData.nameAr || 'علامة تجارية جديدة',
-            nameEn: brandData.nameEn || 'New Brand',
-            descriptionAr: brandData.descriptionAr,
-            descriptionEn: brandData.descriptionEn,
-            logoUrl: brandData.logoUrl,
-            categoryId: brandData.categoryId || '',
-            categoryName: brandData.categoryName || '',
-            subcategoryIds: brandData.subcategoryIds,
-            subcategoryNames: brandData.subcategoryNames,
-            status: brandData.status || 'active',
-            isFeatured: brandData.isFeatured || false,
-            offersCount: 0,
-            offers: [],
-            branches: [],
+      setLocalPartners((prev) =>
+        prev.map((p) => {
+          if (p.id !== selectedPartnerForBrands.id) return p;
+
+          let currentBrands = [...(p.brands || [])];
+          if (editingBrand) {
+            currentBrands = currentBrands.map((b) => (b.id === editingBrand.id ? savedBrand : b));
+          } else {
+            currentBrands.unshift(savedBrand);
+          }
+
+          const updatedPartner = {
+            ...p,
+            brands: currentBrands,
+            brandsCount: currentBrands.length,
           };
-          currentBrands.push(newBrand);
-        }
-
-        const updatedPartner = {
-          ...p,
-          brands: currentBrands,
-          brandsCount: currentBrands.length,
-        };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
+          setSelectedPartnerForBrands(updatedPartner);
+          return updatedPartner;
+        })
+      );
+      setIsAddEditBrandOpen(false);
+      setEditingBrand(null);
+    } catch (err: any) {
+      throw err;
+    }
   };
 
   // Delete Brand
   const handleDeleteBrand = (brand: Brand) => {
-    if (!selectedPartnerForBrands) return;
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-        const updatedBrands = (p.brands || []).filter((b) => b.id !== brand.id);
-        const updatedPartner = {
-          ...p,
-          brands: updatedBrands,
-          brandsCount: updatedBrands.length,
-        };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
+    setBrandToDelete(brand);
+  };
+
+  const handleConfirmDeleteBrand = async () => {
+    if (!selectedPartnerForBrands || !brandToDelete) return;
+
+    try {
+      await brandApiService.deleteBrand(brandToDelete.id);
+      setLocalPartners((prev) =>
+        prev.map((p) => {
+          if (p.id !== selectedPartnerForBrands.id) return p;
+          const updatedBrands = (p.brands || []).filter((b) => b.id !== brandToDelete.id);
+          const updatedPartner = {
+            ...p,
+            brands: updatedBrands,
+            brandsCount: updatedBrands.length,
+          };
+          setSelectedPartnerForBrands(updatedPartner);
+          return updatedPartner;
+        })
+      );
+      if (activeBrandForOffers?.id === brandToDelete.id) {
+        setActiveBrandForOffers(null);
+      }
+    } catch (err: any) {
+      alert(err?.message || 'حدث خطأ أثناء حذف العلامة التجارية من السيرفر');
+      throw err;
+    } finally {
+      setBrandToDelete(null);
+    }
   };
 
   // Toggle Brand Status (from detail view)
@@ -747,10 +780,7 @@ export const PartnersPage: React.FC = () => {
               setIsAddEditBrandOpen(true);
             }}
             onToggleStatus={() => handleToggleBrandStatus(activeBrandForOffers)}
-            onDeleteBrand={() => {
-              handleDeleteBrand(activeBrandForOffers);
-              setActiveBrandForOffers(null);
-            }}
+            onDeleteBrand={() => handleDeleteBrand(activeBrandForOffers)}
             onAddOffer={() => {
               setEditingOffer(null);
               setIsAddEditOfferOpen(true);
@@ -870,6 +900,28 @@ export const PartnersPage: React.FC = () => {
           onSave={handleSaveMenuItem}
           editingItem={editingMenuItem}
           branches={activeBrandForOffers?.branches || []}
+        />
+
+        {/* Delete Brand Modal */}
+        <DeleteBrandModal
+          isOpen={!!brandToDelete}
+          onClose={() => setBrandToDelete(null)}
+          onConfirm={handleConfirmDeleteBrand}
+          brand={brandToDelete}
+        />
+
+        <SuspendPartnerModal
+          isOpen={!!partnerToSuspend}
+          onClose={() => setPartnerToSuspend(null)}
+          onConfirm={handleConfirmSuspendPartner}
+          partner={partnerToSuspend}
+        />
+
+        <DeletePartnerModal
+          isOpen={!!partnerToDelete}
+          onClose={() => setPartnerToDelete(null)}
+          onConfirm={handleConfirmDeletePartner}
+          partner={partnerToDelete}
         />
       </div>
     );
@@ -1017,6 +1069,13 @@ export const PartnersPage: React.FC = () => {
         onClose={() => setPartnerToDelete(null)}
         onConfirm={handleConfirmDeletePartner}
         partner={partnerToDelete}
+      />
+
+      <DeleteBrandModal
+        isOpen={!!brandToDelete}
+        onClose={() => setBrandToDelete(null)}
+        onConfirm={handleConfirmDeleteBrand}
+        brand={brandToDelete}
       />
     </div>
   );

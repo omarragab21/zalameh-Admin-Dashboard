@@ -52,5 +52,5 @@ export interface PartnerRepository {
   /**
    * Toggle or set status for a partner (active, inactive, pending)
    */
-  togglePartnerStatus(id: string, newStatus: PartnerStatus): Promise<Partner>;
+  togglePartnerStatus(id: string, newStatus: PartnerStatus, targetPartner?: Partner): Promise<Partner>;
 }

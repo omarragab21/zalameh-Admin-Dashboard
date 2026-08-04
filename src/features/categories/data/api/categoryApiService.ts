@@ -244,6 +244,41 @@ export const categoryApiService = {
     return headers;
   },
 
+  async fetchGetCategories(): Promise<Category[]> {
+    const url = `${API_BASE_URL}/get_categories`;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new ApiRequestError(`Failed to fetch get_categories`, response.status);
+      }
+
+      const json = await response.json();
+      const rawList = Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : [];
+      
+      const categories = rawList.map((item: any) => mapCategoryFromApi(item));
+      sendTerminalLog({
+        type: 'API_RESPONSE',
+        method: 'GET',
+        url,
+        status: response.status,
+        data: `Fetched ${categories.length} categories with subcategories from /get_categories`,
+      });
+      return categories;
+    } catch (err: any) {
+      sendTerminalLog({
+        type: 'API_ERROR',
+        method: 'GET',
+        url,
+        message: err.message || String(err),
+      });
+      return this.fetchCategories();
+    }
+  },
+
   async fetchCategoriesPage(
     page: number = 1,
     perPage: number = 10,

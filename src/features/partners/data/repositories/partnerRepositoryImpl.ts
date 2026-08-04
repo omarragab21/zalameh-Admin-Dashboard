@@ -71,7 +71,18 @@ export class PartnerRepositoryImpl implements PartnerRepository {
     await partnerApiService.deletePartner(id);
   }
 
-  async togglePartnerStatus(id: string, newStatus: PartnerStatus): Promise<Partner> {
+  async togglePartnerStatus(id: string, newStatus: PartnerStatus, targetPartner?: Partner): Promise<Partner> {
+    if (targetPartner) {
+      return await partnerApiService.updatePartner(id, {
+        nameAr: targetPartner.nameAr,
+        nameEn: targetPartner.nameEn,
+        email: targetPartner.email,
+        phone: targetPartner.phone,
+        descriptionAr: targetPartner.descriptionAr,
+        descriptionEn: targetPartner.descriptionEn,
+        status: newStatus,
+      });
+    }
     return await partnerApiService.updatePartner(id, { status: newStatus });
   }
 }

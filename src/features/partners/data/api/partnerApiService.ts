@@ -53,6 +53,8 @@ function encodeStatusToNumber(statusStr?: PartnerStatus): number {
   return PartnerStatusEnum.INACTIVE; // 0
 }
 
+
+
 export function extractPaginationMeta(payload: any, itemsLength: number = 0): PaginationMeta {
   const meta = payload?.meta;
   const currentPage = parseNonNegativeInteger(meta?.current_page) ?? 1;
@@ -258,7 +260,9 @@ export const partnerApiService = {
       if (payload.descriptionEn) {
         formData.append('description_en', payload.descriptionEn);
       }
-      formData.append('status', encodeStatusToNumber(payload.status || 'active').toString());
+      const statusNum = encodeStatusToNumber(payload.status || 'active');
+      formData.append('status', statusNum.toString());
+      formData.append('is_active', statusNum === 1 ? '1' : '0');
 
       if (payload.packageId !== undefined && payload.packageId !== null) {
         formData.append('package_id', payload.packageId.toString());
@@ -322,7 +326,11 @@ export const partnerApiService = {
         if (payload.password !== undefined) formData.append('password', payload.password);
         if (payload.descriptionAr !== undefined) formData.append('description_ar', payload.descriptionAr);
         if (payload.descriptionEn !== undefined) formData.append('description_en', payload.descriptionEn);
-        if (payload.status !== undefined) formData.append('status', encodeStatusToNumber(payload.status).toString());
+        if (payload.status !== undefined) {
+          const statusNum = encodeStatusToNumber(payload.status);
+          formData.append('status', statusNum.toString());
+          formData.append('is_active', statusNum === 1 ? '1' : '0');
+        }
         if (payload.packageId !== undefined) formData.append('package_id', payload.packageId.toString());
         if (payload.billingCycle !== undefined) formData.append('billing_cycle', payload.billingCycle);
         formData.append('image_file', fileToUpload);
@@ -338,7 +346,11 @@ export const partnerApiService = {
         if (payload.password !== undefined) bodyObj.password = payload.password;
         if (payload.descriptionAr !== undefined) bodyObj.description_ar = payload.descriptionAr;
         if (payload.descriptionEn !== undefined) bodyObj.description_en = payload.descriptionEn;
-        if (payload.status !== undefined) bodyObj.status = encodeStatusToNumber(payload.status);
+        if (payload.status !== undefined) {
+          const statusNum = encodeStatusToNumber(payload.status);
+          bodyObj.status = statusNum;
+          bodyObj.is_active = statusNum === 1 ? 1 : 0;
+        }
         if (payload.packageId !== undefined) bodyObj.package_id = payload.packageId;
         if (payload.billingCycle !== undefined) bodyObj.billing_cycle = payload.billingCycle;
         if (typeof payload.avatarUrl === 'string' && payload.avatarUrl) bodyObj.image_url = payload.avatarUrl;

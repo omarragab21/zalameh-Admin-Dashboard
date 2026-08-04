@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
-import type { Partner } from '../types/partner.types';
+import type { Brand } from '../types/partner.types';
 
-interface DeletePartnerModalProps {
+interface DeleteBrandModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => Promise<void> | void;
-  partner: Partner | null;
+  brand: Brand | null;
 }
 
-export const DeletePartnerModal: React.FC<DeletePartnerModalProps> = ({
+export const DeleteBrandModal: React.FC<DeleteBrandModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  partner,
+  brand,
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
-  if (!isOpen || !partner) return null;
+  if (!isOpen || !brand) return null;
 
   const handleConfirm = async () => {
     setIsDeleting(true);
@@ -36,9 +36,9 @@ export const DeletePartnerModal: React.FC<DeletePartnerModalProps> = ({
         <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
           🗑️
         </div>
-        <h3 className="text-lg font-extrabold text-slate-900 mb-2">تأكيد حذف الشريك</h3>
+        <h3 className="text-lg font-extrabold text-slate-900 mb-2">تأكيد حذف العلامة التجارية</h3>
         <p className="text-sm text-slate-500 max-w-xs mx-auto mb-6">
-          هل أنت متأكد من حذف الشريك <strong className="text-slate-800">{partner.nameAr}</strong>؟ يتم إرسال طلب الحذف إلى خادم البيانات (API).
+          هل أنت ممتأكد من حذف العلامة التجارية <strong className="text-slate-800">{brand.nameAr}</strong>؟ يتم الحذف عبر خادم البيانات (API) ولا يمكن التراجع بعد ذلك.
         </p>
 
         <div className="flex items-center justify-center gap-3">
@@ -67,7 +67,7 @@ export const DeletePartnerModal: React.FC<DeletePartnerModalProps> = ({
                 <span>جاري الحذف...</span>
               </>
             ) : (
-              <span>حذف الشريك</span>
+              <span>حذف العلامة</span>
             )}
           </button>
         </div>
