@@ -137,6 +137,7 @@ export const PartnersPage: React.FC = () => {
   const [isAddEditBrandOpen, setIsAddEditBrandOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
+  const [isTogglingBrandStatus, setIsTogglingBrandStatus] = useState(false);
 
   // Offers Modals state
   const [activeBrandForOffers, setActiveBrandForOffers] = useState<Brand | null>(null);
@@ -333,8 +334,9 @@ export const PartnersPage: React.FC = () => {
 
   // Toggle Brand Status (from detail view)
   const handleToggleBrandStatus = async (brand: Brand) => {
-    if (!selectedPartnerForBrands) return;
+    if (!selectedPartnerForBrands || isTogglingBrandStatus) return;
     const newStatus: BrandStatus = brand.status === 'active' ? 'inactive' : 'active';
+    setIsTogglingBrandStatus(true);
     try {
       const updatedBrand = await brandApiService.updateBrand(brand.id, {
         status: newStatus,
@@ -364,6 +366,8 @@ export const PartnersPage: React.FC = () => {
       }
     } catch (err: any) {
       alert(err?.message || 'فشل تغيير حالة العلامة التجارية');
+    } finally {
+      setIsTogglingBrandStatus(false);
     }
   };
 
@@ -619,6 +623,7 @@ export const PartnersPage: React.FC = () => {
               setIsAddEditBrandOpen(true);
             }}
             onToggleStatus={() => handleToggleBrandStatus(activeBrandForOffers)}
+            isTogglingStatus={isTogglingBrandStatus}
             onDeleteBrand={() => handleDeleteBrand(activeBrandForOffers)}
             onAddOffer={() => {
               setEditingOffer(null);

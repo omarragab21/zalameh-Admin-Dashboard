@@ -49,6 +49,7 @@ interface BrandDetailViewProps {
   onBackToPartnersList?: () => void;
   onEditBrand: () => void;
   onToggleStatus: () => void;
+  isTogglingStatus?: boolean;
   onDeleteBrand: () => void;
   onAddOffer: () => void;
   onEditOffer: (offer: Offer) => void;
@@ -135,6 +136,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
   onBackToPartnersList,
   onEditBrand,
   onToggleStatus,
+  isTogglingStatus = false,
   onDeleteBrand,
   onAddOffer,
   onEditOffer,
@@ -380,12 +382,26 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
           </button>
           <button
             onClick={onToggleStatus}
-            className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm transition flex items-center gap-2 cursor-pointer"
+            disabled={isTogglingStatus}
+            className={`px-4 py-2.5 rounded-xl border font-bold text-sm transition flex items-center gap-2 ${
+              isTogglingStatus
+                ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-80'
+                : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer'
+            }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {brand.status === 'active' ? 'إيقاف' : 'تفعيل'}
+            {isTogglingStatus ? (
+              <>
+                <div className="w-4 h-4 border-2 border-slate-400 border-t-emerald-600 rounded-full animate-spin shrink-0" />
+                <span>{brand.status === 'active' ? 'جاري الإيقاف...' : 'جاري التفعيل...'}</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{brand.status === 'active' ? 'إيقاف' : 'تفعيل'}</span>
+              </>
+            )}
           </button>
           <button
             onClick={onDeleteBrand}
