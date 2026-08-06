@@ -12,7 +12,7 @@ export type PartnerStatus = 'active' | 'inactive' | 'pending';
 
 export type BrandStatus = 'active' | 'inactive';
 
-export type OfferStatus = 'active' | 'expired' | 'disabled';
+export type OfferStatus = 'active' | 'inactive' | 'expired' | 'disabled';
 export type OfferContactMethod = 'phone' | 'whatsapp' | 'map';
 
 export interface OfferContactDetails {
@@ -257,6 +257,7 @@ export interface PackageItem {
   badge?: string;
   isFeatured?: boolean;
   isActive?: boolean;
+  features?: string[];
 }
 
 export interface CreatePartnerPayload {

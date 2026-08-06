@@ -25,9 +25,11 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>('basic');
-  const [selectedPackageId, setSelectedPackageId] = useState<number>(1);
+  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [packagesList, setPackagesList] = useState<PackageItem[]>([]);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(false);
+  const [packagesError, setPackagesError] = useState<string | null>(null);
 
   const [status, setStatus] = useState<PartnerStatus>('active');
   const [password, setPassword] = useState('p@ssW0rd!2024');
@@ -62,6 +64,10 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setPackagesList([]);
+      setSelectedPackageId(null);
+      setPackagesError(null);
+      setIsLoadingPackages(true);
       packageApiService
         .fetchPackages()
         .then((pkgs) => {
@@ -70,7 +76,10 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
             setSelectedPackageId(pkgs[0].id);
           }
         })
-        .catch(() => {});
+        .catch((err: any) => {
+          setPackagesError(err?.message || 'تعذر تحميل الباقات');
+        })
+        .finally(() => setIsLoadingPackages(false));
     }
   }, [isOpen, editingPartner]);
 
@@ -107,15 +116,6 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
 
   const isAr = langTab === 'ar';
 
-  const getPlanName = (p: SubscriptionPlan): string => {
-    switch (p) {
-      case 'basic': return isAr ? 'أساسية' : 'Basic';
-      case 'professional': return isAr ? 'احترافية' : 'Professional';
-      case 'featured': return isAr ? 'مميزة' : 'Featured';
-      case 'enterprise': return isAr ? 'مؤسسية' : 'Enterprise';
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameAr.trim() && !nameEn.trim()) return;
@@ -130,10 +130,10 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
       email,
       phone,
       password,
-      packageId: selectedPackageId,
+      ...(selectedPackageId !== null ? { packageId: selectedPackageId } : {}),
       billingCycle,
       plan: selectedPlan,
-      planName: selectedPkg ? (isAr ? selectedPkg.nameAr : selectedPkg.nameEn) : getPlanName(selectedPlan),
+      planName: selectedPkg ? (isAr ? selectedPkg.nameAr : selectedPkg.nameEn) : '',
       status,
       imageFile: imageFile || undefined,
       avatarUrl: imagePreview || editingPartner?.avatarUrl,
@@ -522,10 +522,21 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {packagesList.length > 0 ? (
+                    {isLoadingPackages ? (
+                      <div className="col-span-full p-5 rounded-2xl border border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-500">
+                        {isAr ? 'جاري تحميل الباقات...' : 'Loading packages...'}
+                      </div>
+                    ) : packagesError ? (
+                      <div className="col-span-full p-5 rounded-2xl border border-rose-200 bg-rose-50 text-center text-xs font-bold text-rose-700">
+                        {packagesError}
+                      </div>
+                    ) : packagesList.length > 0 ? (
                       packagesList.map((pkg) => {
                         const isSelected = selectedPackageId === pkg.id;
-                        const price = billingCycle === 'monthly' ? pkg.monthlyPrice : pkg.yearlyPrice;
+                        const price =
+                          billingCycle === 'monthly'
+                            ? (pkg.monthlyPrice ?? 0)
+                            : (pkg.yearlyPrice ?? ((pkg.monthlyPrice ?? 0) * 10));
                         const cycleUnit = billingCycle === 'monthly' ? (isAr ? 'د.أ / شهر' : 'JOD / month') : (isAr ? 'د.أ / سنة' : 'JOD / year');
                         const name = isAr ? pkg.nameAr : pkg.nameEn;
                         const desc = isAr ? pkg.descriptionAr : pkg.descriptionEn;
@@ -546,14 +557,6 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                               </div>
                             )}
 
-                            {pkg.badge && (
-                              <div className={`absolute top-3 ${isSelected ? (isAr ? 'left-10' : 'right-10') : (isAr ? 'left-3' : 'right-3')}`}>
-                                <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-2xs">
-                                  {pkg.badge}
-                                </span>
-                              </div>
-                            )}
-
                             <div>
                               <h5 className={`font-extrabold text-base ${isSelected ? 'text-[#d83f2a]' : 'text-slate-900'}`}>
                                 {name}
@@ -566,35 +569,26 @@ export const AddEditPartnerModal: React.FC<AddEditPartnerModalProps> = ({
                               <div className={`text-2xl font-extrabold my-3 ${isSelected ? 'text-[#d83f2a]' : 'text-slate-900'}`}>
                                 {price} <span className="text-xs font-normal text-slate-500">{cycleUnit}</span>
                               </div>
-                              <ul className="text-xs space-y-2 font-medium">
-                                <li className={`flex items-center gap-2 ${isSelected ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
-                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                                  {isAr ? 'لوحة تحكم كاملة للشريك' : 'Full partner dashboard access'}
-                                </li>
-                                <li className={`flex items-center gap-2 ${isSelected ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
-                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                                  {isAr ? 'إمكانية إضافة علامات تجارية وفروع' : 'Add brands & branches'}
-                                </li>
-                                <li className={`flex items-center gap-2 ${isSelected ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}>
-                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
-                                  {isAr ? 'دعم فني وتحديثات مستمرة' : 'Technical support & updates'}
-                                </li>
-                              </ul>
+                              {pkg.features && pkg.features.length > 0 && (
+                                <ul className="text-xs space-y-2 font-medium">
+                                  {pkg.features.map((feature) => (
+                                    <li
+                                      key={feature}
+                                      className={`flex items-center gap-2 ${isSelected ? 'text-[#d83f2a] font-bold' : 'text-slate-500'}`}
+                                    >
+                                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-[#d83f2a] text-white' : 'bg-slate-100 text-slate-400'}`}>✓</span>
+                                      {feature}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
                           </div>
                         );
                       })
                     ) : (
-                      <div
-                        onClick={() => setSelectedPackageId(1)}
-                        className="p-5 rounded-2xl border-2 border-[#d83f2a] bg-red-50/30 shadow-md shadow-[#d83f2a]/10 cursor-pointer"
-                      >
-                        <h5 className="font-extrabold text-base text-[#d83f2a]">
-                          {isAr ? 'زلمة على الخفيف' : 'Zalameh Ala El-Khafeef'}
-                        </h5>
-                        <div className="text-2xl font-extrabold my-3 text-[#d83f2a]">
-                          9 <span className="text-xs font-normal text-slate-500">{billingCycle === 'monthly' ? (isAr ? 'د.أ / شهر' : 'JOD / month') : (isAr ? 'د.أ / سنة' : 'JOD / year')}</span>
-                        </div>
+                      <div className="col-span-full p-5 rounded-2xl border border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-500">
+                        {isAr ? 'لا توجد باقات متاحة من الخادم' : 'No packages are available from the server'}
                       </div>
                     )}
                   </div>

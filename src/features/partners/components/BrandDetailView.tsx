@@ -143,7 +143,6 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
   onEditBranch,
   onDeleteBranch,
   onToggleBranchStatus,
-  onSaveExtraInfo,
   onAddPromoCode,
   onEditPromoCode,
   onDeletePromoCode,
@@ -157,33 +156,30 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
 
   const branches: Branch[] = useMemo(
-    () => (brand.branches && brand.branches.length > 0 ? brand.branches : MOCK_DEFAULT_BRANCHES.map(b => ({ ...b, brandId: brand.id }))),
-    [brand.branches, brand.id]
+    () => (brand?.branches && brand.branches.length > 0 ? brand.branches : MOCK_DEFAULT_BRANCHES.map(b => ({ ...b, brandId: brand?.id || '' }))),
+    [brand?.branches, brand?.id]
   );
   const offers: Offer[] = useMemo(
-    () => (brand.offers && brand.offers.length > 0 ? brand.offers : MOCK_DEFAULT_OFFERS.map(o => ({ ...o, brandId: brand.id }))),
-    [brand.offers, brand.id]
+    () => (brand?.offers && brand.offers.length > 0 ? brand.offers : MOCK_DEFAULT_OFFERS.map(o => ({ ...o, brandId: brand?.id || '' }))),
+    [brand?.offers, brand?.id]
   );
   const promoCodes: PromoCode[] = useMemo(
-    () => (brand.promoCodes && brand.promoCodes.length > 0 ? brand.promoCodes : MOCK_DEFAULT_PROMO_CODES.map(p => ({ ...p, brandId: brand.id }))),
-    [brand.promoCodes, brand.id]
+    () => (brand?.promoCodes && brand.promoCodes.length > 0 ? brand.promoCodes : MOCK_DEFAULT_PROMO_CODES.map(p => ({ ...p, brandId: brand?.id || '' }))),
+    [brand?.promoCodes, brand?.id]
   );
   const jobs: JobPosition[] = useMemo(
-    () => (brand.jobs && brand.jobs.length > 0 ? brand.jobs : MOCK_DEFAULT_JOBS.map(j => ({ ...j, brandId: brand.id }))),
-    [brand.jobs, brand.id]
+    () => (brand?.jobs && brand.jobs.length > 0 ? brand.jobs : MOCK_DEFAULT_JOBS.map(j => ({ ...j, brandId: brand?.id || '' }))),
+    [brand?.jobs, brand?.id]
   );
   const menuItems: MenuItem[] = useMemo(
-    () => (brand.menuItems && brand.menuItems.length > 0 ? brand.menuItems : MOCK_DEFAULT_MENU_ITEMS.map(m => ({ ...m, brandId: brand.id }))),
-    [brand.menuItems, brand.id]
+    () => (brand?.menuItems && brand.menuItems.length > 0 ? brand.menuItems : MOCK_DEFAULT_MENU_ITEMS.map(m => ({ ...m, brandId: brand?.id || '' }))),
+    [brand?.menuItems, brand?.id]
   );
 
   // Offers Filter States
   const [offerSearch, setOfferSearch] = useState('');
   const [offerBranch, setOfferBranch] = useState('all');
   const [offerStatus, setOfferStatus] = useState('all');
-  const [offerStartDate, setOfferStartDate] = useState('');
-  const [offerEndDate, setOfferEndDate] = useState('');
-
   // Jobs Filter States
   const [jobSearch, setJobSearch] = useState('');
   const [jobBranch, setJobBranch] = useState('all');
@@ -308,7 +304,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
           {partnerName}
         </span>
         <span>‹</span>
-        <span className="text-emerald-600">{brand.nameAr}</span>
+        <span className="text-emerald-600">{brand?.nameAr || 'علامة تجارية'}</span>
       </div>
 
       {/* Brand Header */}
@@ -324,18 +320,18 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
             </svg>
           </button>
           <div className="relative shrink-0">
-            {brand.logoUrl ? (
+            {brand?.logoUrl ? (
               <img
                 src={brand.logoUrl}
-                alt={brand.nameAr}
+                alt={brand.nameAr || 'علامة تجارية'}
                 className="w-14 h-14 rounded-2xl object-cover border border-slate-200 bg-white"
               />
             ) : (
               <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-extrabold flex items-center justify-center text-2xl">
-                {brand.nameAr.charAt(0)}
+                {(brand?.nameAr || 'B').charAt(0)}
               </div>
             )}
-            {brand.isFeatured && (
+            {brand?.isFeatured && (
               <div
                 className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-amber-400 text-amber-950 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-black z-10"
                 title="علامة تجارية مميزة"
@@ -346,9 +342,9 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-extrabold text-slate-900">{brand.nameAr}</h2>
+              <h2 className="text-xl font-extrabold text-slate-900">{brand?.nameAr || 'علامة تجارية'}</h2>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${brand.status === 'active'
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${brand?.status === 'active'
                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                   : 'bg-slate-100 text-slate-500 border border-slate-200'
                   }`}
@@ -629,6 +625,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                 <table className="w-full text-right">
                   <thead>
                     <tr className="border-t border-b border-slate-100 bg-slate-50/60">
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">صورة العرض</th>
                       <th className="px-5 py-3 text-[11px] font-bold text-slate-400">العنوان</th>
                       <th className="px-5 py-3 text-[11px] font-bold text-slate-400">التفاصيل</th>
                       <th className="px-5 py-3 text-[11px] font-bold text-slate-400">طرق التواصل</th>
@@ -639,6 +636,20 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                   <tbody>
                     {filteredOffers.map((offer) => (
                       <tr key={offer.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                        {/* Offer Image or Dummy Icon Placeholder */}
+                        <td className="px-5 py-3">
+                          {offer.imageUrl ? (
+                            <img
+                              src={offer.imageUrl}
+                              alt={offer.titleAr}
+                              className="w-11 h-11 rounded-xl object-cover border border-slate-200 shadow-2xs"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-600 flex items-center justify-center text-xl shrink-0 shadow-2xs" title="صورة العرض التمريرية">
+                              🏷️
+                            </div>
+                          )}
+                        </td>
                         <td className="px-5 py-3.5 text-xs font-extrabold text-slate-900">
                           <div>{offer.titleAr}</div>
                           {offer.titleEn && <div className="text-[11px] text-slate-400 font-normal dir-ltr text-right">{offer.titleEn}</div>}

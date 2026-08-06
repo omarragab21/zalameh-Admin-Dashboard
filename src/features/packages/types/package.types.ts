@@ -24,6 +24,8 @@ export interface Package {
   descriptionAr?: string;
   descriptionEn?: string;
   price: number; // In JOD (د.أ)
+  monthlyPrice?: number;
+  yearlyPrice?: number;
   duration: PackageDuration;
   features: string[]; // List of feature tags e.g. ["قوائم مميزة", "إدارة العروض"]
   permissions: PackagePermissions;

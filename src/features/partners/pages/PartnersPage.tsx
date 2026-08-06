@@ -27,14 +27,40 @@ import {
   MOCK_DEFAULT_MENU_ITEMS,
 } from '../data/mockBrandDetailsData';
 
-const ensureBrandMockData = (b: Brand): Brand => ({
-  ...b,
-  branches: b.branches && b.branches.length > 0 ? b.branches : MOCK_DEFAULT_BRANCHES.map((br) => ({ ...br, brandId: b.id })),
-  offers: b.offers && b.offers.length > 0 ? b.offers : MOCK_DEFAULT_OFFERS.map((o) => ({ ...o, brandId: b.id })),
-  promoCodes: b.promoCodes && b.promoCodes.length > 0 ? b.promoCodes : MOCK_DEFAULT_PROMO_CODES.map((p) => ({ ...p, brandId: b.id })),
-  jobs: b.jobs && b.jobs.length > 0 ? b.jobs : MOCK_DEFAULT_JOBS.map((j) => ({ ...j, brandId: b.id })),
-  menuItems: b.menuItems && b.menuItems.length > 0 ? b.menuItems : MOCK_DEFAULT_MENU_ITEMS.map((m) => ({ ...m, brandId: b.id })),
-});
+const ensureBrandMockData = (b?: Brand | null): Brand => {
+  if (!b) {
+    return {
+      id: 'brand-fallback',
+      partnerId: '',
+      nameAr: 'علامة تجارية',
+      nameEn: 'Brand',
+      descriptionAr: '',
+      descriptionEn: '',
+      categoryId: '',
+      categoryName: 'عام',
+      status: 'active',
+      isFeatured: false,
+      offersCount: MOCK_DEFAULT_OFFERS.length,
+      branches: MOCK_DEFAULT_BRANCHES,
+      offers: MOCK_DEFAULT_OFFERS,
+      promoCodes: MOCK_DEFAULT_PROMO_CODES,
+      jobs: MOCK_DEFAULT_JOBS,
+      menuItems: MOCK_DEFAULT_MENU_ITEMS,
+    };
+  }
+  const brandId = b.id || 'brand-fallback';
+  return {
+    ...b,
+    id: brandId,
+    nameAr: b.nameAr || 'علامة تجارية',
+    nameEn: b.nameEn || 'Brand',
+    branches: Array.isArray(b.branches) && b.branches.length > 0 ? b.branches : MOCK_DEFAULT_BRANCHES.map((br) => ({ ...br, brandId })),
+    offers: Array.isArray(b.offers) && b.offers.length > 0 ? b.offers : MOCK_DEFAULT_OFFERS.map((o) => ({ ...o, brandId })),
+    promoCodes: Array.isArray(b.promoCodes) && b.promoCodes.length > 0 ? b.promoCodes : MOCK_DEFAULT_PROMO_CODES.map((p) => ({ ...p, brandId })),
+    jobs: Array.isArray(b.jobs) && b.jobs.length > 0 ? b.jobs : MOCK_DEFAULT_JOBS.map((j) => ({ ...j, brandId })),
+    menuItems: Array.isArray(b.menuItems) && b.menuItems.length > 0 ? b.menuItems : MOCK_DEFAULT_MENU_ITEMS.map((m) => ({ ...m, brandId })),
+  };
+};
 
 export const PartnersPage: React.FC = () => {
   const {
@@ -207,63 +233,59 @@ export const PartnersPage: React.FC = () => {
   const handleSaveBrand = async (brandData: Partial<Brand>) => {
     if (!selectedPartnerForBrands) return;
 
-    try {
-      let savedBrand: Brand;
-      if (editingBrand) {
-        savedBrand = await brandApiService.updateBrand(editingBrand.id, {
-          ...brandData,
-          partnerId: selectedPartnerForBrands.id,
-        });
-      } else {
-        savedBrand = await brandApiService.createBrand({
-          ...brandData,
-          partnerId: selectedPartnerForBrands.id,
-        });
-      }
+    let savedBrand: Brand;
+    if (editingBrand) {
+      savedBrand = await brandApiService.updateBrand(editingBrand.id, {
+        ...brandData,
+        partnerId: selectedPartnerForBrands.id,
+      });
+    } else {
+      savedBrand = await brandApiService.createBrand({
+        ...brandData,
+        partnerId: selectedPartnerForBrands.id,
+      });
+    }
 
-      setSelectedPartnerForBrands((prev) => {
-        if (!prev) return null;
-        let currentBrands = [...(prev.brands || [])];
+    setSelectedPartnerForBrands((prev) => {
+      if (!prev) return null;
+      let currentBrands = [...(prev.brands || [])];
+      if (editingBrand) {
+        currentBrands = currentBrands.map((b) => (b.id === editingBrand.id ? savedBrand : b));
+      } else {
+        currentBrands.unshift(savedBrand);
+      }
+      return {
+        ...prev,
+        brands: currentBrands,
+        brandsCount: currentBrands.length,
+      };
+    });
+
+    setLocalPartners((prev) =>
+      prev.map((p) => {
+        if (p.id !== selectedPartnerForBrands.id) return p;
+
+        let currentBrands = [...(p.brands || [])];
         if (editingBrand) {
           currentBrands = currentBrands.map((b) => (b.id === editingBrand.id ? savedBrand : b));
         } else {
           currentBrands.unshift(savedBrand);
         }
+
         return {
-          ...prev,
+          ...p,
           brands: currentBrands,
           brandsCount: currentBrands.length,
         };
-      });
+      })
+    );
 
-      setLocalPartners((prev) =>
-        prev.map((p) => {
-          if (p.id !== selectedPartnerForBrands.id) return p;
-
-          let currentBrands = [...(p.brands || [])];
-          if (editingBrand) {
-            currentBrands = currentBrands.map((b) => (b.id === editingBrand.id ? savedBrand : b));
-          } else {
-            currentBrands.unshift(savedBrand);
-          }
-
-          return {
-            ...p,
-            brands: currentBrands,
-            brandsCount: currentBrands.length,
-          };
-        })
-      );
-
-      if (activeBrandForOffers && (editingBrand?.id === activeBrandForOffers.id || activeBrandForOffers.id === savedBrand.id)) {
-        setActiveBrandForOffers(savedBrand);
-      }
-
-      setIsAddEditBrandOpen(false);
-      setEditingBrand(null);
-    } catch (err: any) {
-      throw err;
+    if (activeBrandForOffers && (editingBrand?.id === activeBrandForOffers.id || activeBrandForOffers.id === savedBrand.id)) {
+      setActiveBrandForOffers(savedBrand);
     }
+
+    setIsAddEditBrandOpen(false);
+    setEditingBrand(null);
   };
 
   // Delete Brand

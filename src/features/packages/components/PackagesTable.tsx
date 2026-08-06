@@ -1,22 +1,17 @@
 import React from 'react';
-import type { Package, PackageDuration } from '../types/package.types';
+import type { Package } from '../types/package.types';
 
 interface PackagesTableProps {
   packages: Package[];
+  activeDurationFilter?: 'all' | 'monthly' | 'annual' | string;
   onViewPackage: (pkg: Package) => void;
   onEditPackage: (pkg: Package) => void;
   onDeletePackage: (pkg: Package) => void;
 }
 
-const DURATION_LABELS: Record<PackageDuration, string> = {
-  monthly: 'شهري',
-  quarterly: 'ربع سنوي',
-  semi_annual: 'نصف سنوي',
-  annual: 'سنوي',
-};
-
 export const PackagesTable: React.FC<PackagesTableProps> = ({
   packages,
+  activeDurationFilter = 'all',
   onViewPackage,
   onEditPackage,
   onDeletePackage,
@@ -41,8 +36,8 @@ export const PackagesTable: React.FC<PackagesTableProps> = ({
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-bold text-slate-400">
             <th className="px-5 py-3.5 font-bold">اسم الباقة</th>
-            <th className="px-5 py-3.5 font-bold">السعر</th>
-            <th className="px-5 py-3.5 font-bold">المدة</th>
+            <th className="px-5 py-3.5 font-bold">السعر الشهرى والسنوي</th>
+            <th className="px-5 py-3.5 font-bold">الفترة الحالية</th>
             <th className="px-5 py-3.5 font-bold">باقة مميزة</th>
             <th className="px-5 py-3.5 font-bold">الحالة</th>
             <th className="px-5 py-3.5 font-bold text-left">الإجراءات</th>
@@ -52,6 +47,8 @@ export const PackagesTable: React.FC<PackagesTableProps> = ({
           {packages.map((pkg) => {
             const isFeatured = pkg.settings?.isFeaturedPackage;
             const status = pkg.settings?.status || 'active';
+            const mPrice = pkg.monthlyPrice ?? pkg.price ?? 0;
+            const yPrice = pkg.yearlyPrice ?? (pkg.price ? pkg.price * 10 : 0);
 
             return (
               <tr key={pkg.id} className="hover:bg-slate-50/50 transition">
@@ -72,15 +69,38 @@ export const PackagesTable: React.FC<PackagesTableProps> = ({
                   </div>
                 </td>
 
-                {/* Price */}
-                <td className="px-5 py-4 font-black text-slate-900 text-xs">
-                  {pkg.price} د.أ
+                {/* Price (Monthly & Annual breakdown) */}
+                <td className="px-5 py-4">
+                  {activeDurationFilter === 'annual' ? (
+                    <div>
+                      <span className="font-black text-slate-900 text-xs">{yPrice} د.أ</span>
+                      <span className="text-[10px] font-bold text-slate-400 block">سنوياً</span>
+                    </div>
+                  ) : activeDurationFilter === 'monthly' ? (
+                    <div>
+                      <span className="font-black text-slate-900 text-xs">{mPrice} د.أ</span>
+                      <span className="text-[10px] font-bold text-slate-400 block">شهرياً</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-extrabold text-slate-800 text-xs">
+                        شهري: <span className="font-black text-slate-900">{mPrice} د.أ</span>
+                      </span>
+                      <span className="font-extrabold text-slate-800 text-xs">
+                        سنوي: <span className="font-black text-slate-900">{yPrice} د.أ</span>
+                      </span>
+                    </div>
+                  )}
                 </td>
 
                 {/* Duration */}
                 <td className="px-5 py-4">
                   <span className="px-3 py-1 rounded-lg text-xs font-extrabold bg-sky-50 text-sky-700 border border-sky-100 w-fit inline-block">
-                    {DURATION_LABELS[pkg.duration] || pkg.duration}
+                    {activeDurationFilter === 'annual'
+                      ? '🏆 اشتراك سنوي'
+                      : activeDurationFilter === 'monthly'
+                      ? '📅 اشتراك شهري'
+                      : '📅 شهري و سنوي 🏆'}
                   </span>
                 </td>
 

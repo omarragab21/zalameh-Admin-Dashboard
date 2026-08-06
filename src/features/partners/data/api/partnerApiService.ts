@@ -112,7 +112,7 @@ export function mapPartnerFromApi(item: any): Partner {
   const rawStatus = item.status ?? item.is_active;
   const partnerStatus = parseStatus(rawStatus);
 
-  const packageName = item.package_name || item.plan_name || item.planName || 'زلمة على الخفيف';
+  const packageName = item.package_name || item.plan_name || item.planName || '';
 
   let plan: Partner['plan'] = 'basic';
   if (packageName.includes('سوبر') || packageName.toLowerCase().includes('featured')) {

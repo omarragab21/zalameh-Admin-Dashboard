@@ -1,23 +1,42 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Package, PackageFilterStatus } from '../types/package.types';
-import { initialPackages } from '../data/mockPackages';
 import { PackageStatsHeader } from '../components/PackageStatsHeader';
-import { PackageFilterBar } from '../components/PackageFilterBar';
+import { PackageFilterBar, type PackageFilterDuration } from '../components/PackageFilterBar';
 import { PackagesTable } from '../components/PackagesTable';
 import { AddEditPackageModal } from '../components/AddEditPackageModal';
 import { PackageDetailsModal } from '../components/PackageDetailsModal';
+import { packageApiService } from '../../partners/data/api/packageApiService';
 
 export const PackagesPage: React.FC = () => {
-  const [packages, setPackages] = useState<Package[]>(initialPackages);
+  const [packages, setPackages] = useState<Package[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PackageFilterStatus>('all');
+  const [durationFilter, setDurationFilter] = useState<PackageFilterDuration>('all');
+  const [isLoadingApi, setIsLoadingApi] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  // Modals state
   const [isAddEditOpen, setIsAddEditOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
-
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [viewingPackage, setViewingPackage] = useState<Package | null>(null);
+
+  const loadApiPackages = useCallback(async () => {
+    setIsLoadingApi(true);
+    setApiError(null);
+    try {
+      const apiPackages = await packageApiService.fetchManagementPackages();
+      setPackages(apiPackages);
+    } catch (err: any) {
+      setPackages([]);
+      setApiError(err?.message || 'تعذر تحميل الباقات من الخادم');
+    } finally {
+      setIsLoadingApi(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadApiPackages();
+  }, [loadApiPackages]);
 
   // Statistics calculation
   const totalCount = packages.length;
@@ -30,7 +49,7 @@ export const PackagesPage: React.FC = () => {
     [packages]
   );
 
-  // Filtered packages
+  // Filtered packages by Status and Search Query (Duration filter controls price display in table)
   const filteredPackages = useMemo(() => {
     return packages.filter((p) => {
       // Status filter
@@ -38,6 +57,7 @@ export const PackagesPage: React.FC = () => {
       if (statusFilter !== 'all' && pStatus !== statusFilter) {
         return false;
       }
+
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -50,34 +70,55 @@ export const PackagesPage: React.FC = () => {
   }, [packages, statusFilter, searchQuery]);
 
   // Save Package (Add / Edit)
-  const handleSavePackage = (packageData: Partial<Package>) => {
-    if (editingPackage) {
-      setPackages((prev) =>
-        prev.map((p) => (p.id === editingPackage.id ? { ...p, ...packageData } as Package : p))
-      );
-    } else {
-      const newPackage: Package = {
-        id: `pkg-${Date.now()}`,
-        nameAr: packageData.nameAr || 'باقة جديدة',
-        nameEn: packageData.nameEn || 'New Package',
-        descriptionAr: packageData.descriptionAr,
-        descriptionEn: packageData.descriptionEn,
-        price: packageData.price ?? 0,
-        duration: packageData.duration || 'monthly',
-        features: packageData.features || [],
-        permissions: packageData.permissions || {},
-        settings: packageData.settings || { status: 'active', displayOrder: packages.length + 1 },
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      setPackages((prev) => [newPackage, ...prev]);
+  const handleSavePackage = async (packageData: Partial<Package>) => {
+    setIsLoadingApi(true);
+    setApiError(null);
+    try {
+      if (editingPackage) {
+        await packageApiService.updatePackage(editingPackage.id, packageData);
+      } else {
+        await packageApiService.createPackage(packageData);
+      }
+      await loadApiPackages();
+    } catch (err: any) {
+      const message = err?.message || 'تعذر حفظ الباقة';
+      setApiError(message);
+      throw err;
+    } finally {
+      setIsLoadingApi(false);
     }
   };
 
   // Delete Package
-  const handleDeletePackage = (pkg: Package) => {
+  const handleDeletePackage = async (pkg: Package) => {
     if (window.confirm(`هل أنت تأكد من حذف باقة "${pkg.nameAr}"؟`)) {
-      setPackages((prev) => prev.filter((p) => p.id !== pkg.id));
+      setIsLoadingApi(true);
+      setApiError(null);
+      try {
+        await packageApiService.deletePackage(pkg.id);
+        await loadApiPackages();
+      } catch (err: any) {
+        setApiError(err?.message || 'تعذر حذف الباقة');
+      } finally {
+        setIsLoadingApi(false);
+      }
     }
+  };
+
+  // Modal Handlers
+  const handleViewPackage = (pkg: Package) => {
+    setViewingPackage(pkg);
+    setIsDetailsOpen(true);
+  };
+
+  const handleEditPackage = (pkg: Package) => {
+    setEditingPackage(pkg);
+    setIsAddEditOpen(true);
+  };
+
+  const handleAddPackageClick = () => {
+    setEditingPackage(null);
+    setIsAddEditOpen(true);
   };
 
   return (
@@ -90,30 +131,43 @@ export const PackagesPage: React.FC = () => {
       />
 
       {/* 2. Main Table Block */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col relative">
+        {isLoadingApi && (
+          <div className="absolute top-0 right-0 left-0 h-1 bg-[#d83f2a]/20 overflow-hidden z-20">
+            <div className="h-full bg-[#d83f2a] animate-pulse w-full"></div>
+          </div>
+        )}
+
+        {apiError && (
+          <div className="mx-5 mt-5 flex items-center justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+            <p className="text-xs font-bold text-rose-700">{apiError}</p>
+            <button
+              type="button"
+              onClick={() => void loadApiPackages()}
+              className="shrink-0 text-xs font-extrabold text-[#d83f2a] hover:text-[#b83220] cursor-pointer"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
         {/* Action Filter Bar */}
         <PackageFilterBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-          onAddPackageClick={() => {
-            setEditingPackage(null);
-            setIsAddEditOpen(true);
-          }}
+          durationFilter={durationFilter}
+          onDurationFilterChange={setDurationFilter}
+          onAddPackageClick={handleAddPackageClick}
         />
 
         {/* Packages Table */}
         <PackagesTable
           packages={filteredPackages}
-          onViewPackage={(pkg) => {
-            setViewingPackage(pkg);
-            setIsDetailsOpen(true);
-          }}
-          onEditPackage={(pkg) => {
-            setEditingPackage(pkg);
-            setIsAddEditOpen(true);
-          }}
+          activeDurationFilter={durationFilter}
+          onViewPackage={handleViewPackage}
+          onEditPackage={handleEditPackage}
           onDeletePackage={handleDeletePackage}
         />
       </div>

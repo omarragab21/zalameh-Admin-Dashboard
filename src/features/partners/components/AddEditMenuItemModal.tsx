@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { MenuItem, MenuItemUnitType, MenuItemStatus, PublishingScope, Branch } from '../types/partner.types';
 
 interface AddEditMenuItemModalProps {
@@ -31,6 +31,15 @@ export const AddEditMenuItemModal: React.FC<AddEditMenuItemModalProps> = ({
   const [status, setStatus] = useState<MenuItemStatus>('available');
   const [publishingScope, setPublishingScope] = useState<PublishingScope>('all_branches');
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
+
+  // Image Crop & Resize Modal State (Declared unconditionally at top of component for React Rules of Hooks)
+  const [cropRawSrc, setCropRawSrc] = useState<string | null>(null);
+  const [isCropOpen, setIsCropOpen] = useState<boolean>(false);
+  const [cropZoom, setCropZoom] = useState<number>(1);
+  const [cropOffset, setCropOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cropImageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (editingItem) {
@@ -79,6 +88,53 @@ export const AddEditMenuItemModal: React.FC<AddEditMenuItemModalProps> = ({
     );
   };
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setCropRawSrc(reader.result);
+        setCropZoom(1);
+        setCropOffset({ x: 0, y: 0 });
+        setIsCropOpen(true);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleApplyCrop = () => {
+    if (!cropRawSrc) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = cropRawSrc;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const targetDimension = 512;
+      canvas.width = targetDimension;
+      canvas.height = targetDimension;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetDimension, targetDimension);
+
+        const aspect = img.width / img.height;
+        let drawW = targetDimension * cropZoom;
+        let drawH = (targetDimension / aspect) * cropZoom;
+
+        const drawX = (targetDimension - drawW) / 2 + cropOffset.x;
+        const drawY = (targetDimension - drawH) / 2 + cropOffset.y;
+
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        setImageUrl(croppedDataUrl);
+      }
+      setIsCropOpen(false);
+      setCropRawSrc(null);
+    };
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameAr.trim()) return;
@@ -101,277 +157,376 @@ export const AddEditMenuItemModal: React.FC<AddEditMenuItemModalProps> = ({
     onClose();
   };
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn" dir="rtl">
-      <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 space-y-0">
-        {/* Modal Header */}
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition font-bold text-sm cursor-pointer"
-          >
-            ✕
-          </button>
-          <h3 className="text-lg font-black text-slate-900">
-            {editingItem ? 'تعديل عنصر في القائمة' : 'إضافة عنصر للقائمة'}
-          </h3>
-        </div>
+    <>
+      {/* 1. Image Crop & Resize Modal */}
+      {isCropOpen && cropRawSrc && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn" dir="rtl">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-5 space-y-4 text-center">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <span>✂️</span>
+                <span>قص وضبط صورة العنصر (512x512)</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCropOpen(false);
+                  setCropRawSrc(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
 
-        {/* Language Tabs */}
-        <div className="flex items-center justify-start px-6 gap-8 border-b border-slate-100 text-xs font-bold pt-3 pb-0">
-          <button
-            type="button"
-            onClick={() => setActiveLang('ar')}
-            className={`pb-2.5 px-2 relative transition cursor-pointer ${
-              activeLang === 'ar' ? 'text-[#d83f2a]' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            العربية
+            {/* Crop Canvas Preview Box */}
+            <div className="relative w-64 h-64 mx-auto rounded-2xl border-2 border-dashed border-[#d83f2a] overflow-hidden bg-slate-950 shadow-inner flex items-center justify-center">
+              <img
+                ref={cropImageRef}
+                src={cropRawSrc}
+                alt="Crop preview"
+                style={{
+                  transform: `scale(${cropZoom}) translate(${cropOffset.x / cropZoom}px, ${cropOffset.y / cropZoom}px)`,
+                  transition: 'transform 0.05s ease-out',
+                }}
+                className="max-w-full max-h-full object-contain pointer-events-none"
+              />
+              <div className="absolute inset-0 border border-white/30 pointer-events-none rounded-2xl"></div>
+            </div>
+
+            {/* Controls: Zoom & Offset */}
+            <div className="space-y-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 text-right">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>التكبير والقص (Zoom)</span>
+                  <span className="text-[#d83f2a]">{cropZoom.toFixed(1)}x</span>
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={cropZoom}
+                  onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                  className="w-full accent-[#d83f2a] cursor-pointer"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-center text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setCropOffset((prev) => ({ ...prev, y: prev.y - 15 }))}
+                  className="py-1 px-2 bg-white rounded-lg border border-slate-200 font-bold hover:bg-slate-100"
+                >
+                  ⬆️ تحريك لأعلى
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCropOffset((prev) => ({ ...prev, y: prev.y + 15 }))}
+                  className="py-1 px-2 bg-white rounded-lg border border-slate-200 font-bold hover:bg-slate-100"
+                >
+                  ⬇️ تحريك لأسفل
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleApplyCrop}
+                className="flex-1 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c23420] text-white font-extrabold text-xs shadow-md shadow-[#d83f2a]/20 transition cursor-pointer"
+              >
+                اعتماد الصورة وملاءمة الحجم
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCropOpen(false);
+                  setCropRawSrc(null);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Main Add/Edit Menu Item Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn" dir="rtl">
+        <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 space-y-0">
+          {/* Modal Header */}
+          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition font-bold text-sm cursor-pointer"
+            >
+              ✕
+            </button>
+            <h3 className="text-lg font-black text-slate-900">
+              {editingItem ? 'تعديل عنصر في القائمة' : 'إضافة عنصر للقائمة'}
+            </h3>
+          </div>
+
+          {/* Language Tabs */}
+          <div className="flex items-center justify-start px-6 gap-8 border-b border-slate-100 text-xs font-bold pt-3 pb-0">
+            <button
+              type="button"
+              onClick={() => setActiveLang('ar')}
+              className={`pb-2.5 px-2 relative transition cursor-pointer ${
+                activeLang === 'ar' ? 'text-[#d83f2a]' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              العربية
+              {activeLang === 'ar' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#d83f2a] rounded-full" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveLang('en')}
+              className={`pb-2.5 px-2 relative transition cursor-pointer ${
+                activeLang === 'en' ? 'text-[#d83f2a]' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              English
+              {activeLang === 'en' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#d83f2a] rounded-full" />
+              )}
+            </button>
+          </div>
+
+          {/* Modal Body / Form */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+            {/* Tab 1: Arabic */}
             {activeLang === 'ar' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#d83f2a] rounded-full" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveLang('en')}
-            className={`pb-2.5 px-2 relative transition cursor-pointer ${
-              activeLang === 'en' ? 'text-[#d83f2a]' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            English
-            {activeLang === 'en' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#d83f2a] rounded-full" />
-            )}
-          </button>
-        </div>
-
-        {/* Modal Body / Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-          {/* Tab 1: Arabic */}
-          {activeLang === 'ar' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  اسم العنصر بالعربية <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={nameAr}
-                  onChange={(e) => setNameAr(e.target.value)}
-                  placeholder="اسم العنصر أو الخدمة بالعربية"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  الفئة بالعربية
-                </label>
-                <input
-                  type="text"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="مثل: توصيل / وجبات رئيسية"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  الوصف بالعربية
-                </label>
-                <textarea
-                  rows={2}
-                  value={descriptionAr}
-                  onChange={(e) => setDescriptionAr(e.target.value)}
-                  placeholder="وصف مختصر للعنصر ومكوناته بالعربية..."
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition resize-none"
-                />
-              </div>
-
-              {/* Price (Arabic) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  السعر
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="25 د.أ"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
-                />
-              </div>
-
-              {/* Unit Type (Arabic) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">
-                  نوع العنصر (كمية أو عدد)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    onClick={() => setUnitType('count')}
-                    className={`p-3 rounded-xl border cursor-pointer text-center transition ${
-                      unitType === 'count'
-                        ? 'border-[#d83f2a] bg-rose-50/40 text-[#d83f2a] font-extrabold'
-                        : 'border-slate-200 text-slate-600 font-bold hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="text-xs">عدد (قطعة / ملحق)</span>
-                  </div>
-
-                  <div
-                    onClick={() => setUnitType('quantity')}
-                    className={`p-3 rounded-xl border cursor-pointer text-center transition ${
-                      unitType === 'quantity'
-                        ? 'border-[#d83f2a] bg-rose-50/40 text-[#d83f2a] font-extrabold'
-                        : 'border-slate-200 text-slate-600 font-bold hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="text-xs">كمية (وزن / وجبة)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: English */}
-          {activeLang === 'en' && (
-            <div className="space-y-4" dir="ltr">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 text-left">
-                  Item Name (English)
-                </label>
-                <input
-                  type="text"
-                  value={nameEn}
-                  onChange={(e) => setNameEn(e.target.value)}
-                  placeholder="Item name in English"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 text-left">
-                  Category (English)
-                </label>
-                <input
-                  type="text"
-                  value={categoryEn}
-                  onChange={(e) => setCategoryEn(e.target.value)}
-                  placeholder="e.g. Delivery / Main Course"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 text-left">
-                  Description (English)
-                </label>
-                <textarea
-                  rows={2}
-                  value={descriptionEn}
-                  onChange={(e) => setDescriptionEn(e.target.value)}
-                  placeholder="Brief item description in English..."
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition resize-none"
-                />
-              </div>
-
-              {/* Price (English) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 text-left">
-                  Price
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="25 JOD"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
-                />
-              </div>
-
-              {/* Unit Type (English) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 text-left">
-                  Item Type (Quantity or Count)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    onClick={() => setUnitType('count')}
-                    className={`p-3 rounded-xl border cursor-pointer text-center transition ${
-                      unitType === 'count'
-                        ? 'border-[#d83f2a] bg-rose-50/40 text-[#d83f2a] font-extrabold'
-                        : 'border-slate-200 text-slate-600 font-bold hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="text-xs">Count (Piece / Item)</span>
-                  </div>
-
-                  <div
-                    onClick={() => setUnitType('quantity')}
-                    className={`p-3 rounded-xl border cursor-pointer text-center transition ${
-                      unitType === 'quantity'
-                        ? 'border-[#d83f2a] bg-rose-50/40 text-[#d83f2a] font-extrabold'
-                        : 'border-slate-200 text-slate-600 font-bold hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="text-xs">Quantity (Weight / Portion)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Common Fields Section */}
-          <div className="pt-3 border-t border-slate-100 space-y-4">
-
-            {/* Item Image */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                صورة العنصر
-              </label>
-              <div className="flex items-center gap-3">
-                <label className="cursor-pointer px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition">
-                  <span>اختر صورة</span>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    اسم العنصر بالعربية <span className="text-rose-500">*</span>
+                  </label>
                   <input
+                    type="text"
+                    required
+                    value={nameAr}
+                    onChange={(e) => setNameAr(e.target.value)}
+                    placeholder="اسم العنصر أو الخدمة بالعربية"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    الفئة بالعربية
+                  </label>
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="مثل: توصيل / وجبات رئيسية"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    الوصف بالعربية
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={descriptionAr}
+                    onChange={(e) => setDescriptionAr(e.target.value)}
+                    placeholder="وصف مختصر للعنصر ومكوناته بالعربية..."
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition resize-none"
+                  />
+                </div>
+
+                {/* Price (Arabic) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    السعر
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="25 د.أ"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
+                  />
+                </div>
+
+                {/* Unit Type (Arabic) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2">
+                    نوع العنصر (كمية أو عدد)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div
+                      onClick={() => setUnitType('count')}
+                      className={`p-3 rounded-xl border cursor-pointer text-center transition ${
+                        unitType === 'count'
+                          ? 'border-[#d83f2a] bg-rose-50/40 text-[#d83f2a] font-extrabold'
+                          : 'border-slate-200 text-slate-600 font-bold hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-xs">عدد (قطعة / ملحق)</span>
+                    </div>
+
+                    <div
+                      onClick={() => setUnitType('quantity')}
+                      className={`p-3 rounded-xl border cursor-pointer text-center transition ${
+                        unitType === 'quantity'
+                          ? 'border-[#d83f2a] bg-rose-50/40 text-[#d83f2a] font-extrabold'
+                          : 'border-slate-200 text-slate-600 font-bold hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-xs">كمية (وزن / وجبة)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: English */}
+            {activeLang === 'en' && (
+              <div className="space-y-4" dir="ltr">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 text-left">
+                    Item Name (English)
+                  </label>
+                  <input
+                    type="text"
+                    value={nameEn}
+                    onChange={(e) => setNameEn(e.target.value)}
+                    placeholder="Item name in English"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 text-left">
+                    Category (English)
+                  </label>
+                  <input
+                    type="text"
+                    value={categoryEn}
+                    onChange={(e) => setCategoryEn(e.target.value)}
+                    placeholder="e.g. Delivery / Main Course"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 text-left">
+                    Description (English)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={descriptionEn}
+                    onChange={(e) => setDescriptionEn(e.target.value)}
+                    placeholder="Brief item description in English..."
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition resize-none"
+                  />
+                </div>
+
+                {/* Price (English) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 text-left">
+                    Price
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="25 JOD"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d83f2a]/20 focus:border-[#d83f2a] transition"
+                  />
+                </div>
+
+                {/* Unit Type (English) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 text-left">
+                    Item Type (Quantity or Count)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div
+                      onClick={() => setUnitType('count')}
+                      className={`p-3 rounded-xl border cursor-pointer text-center transition ${
+                        unitType === 'count'
+                          ? 'border-[#d83f2a] bg-rose-50/40 text-[#d83f2a] font-extrabold'
+                          : 'border-slate-200 text-slate-600 font-bold hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-xs">Count (Piece / Item)</span>
+                    </div>
+
+                    <div
+                      onClick={() => setUnitType('quantity')}
+                      className={`p-3 rounded-xl border cursor-pointer text-center transition ${
+                        unitType === 'quantity'
+                          ? 'border-[#d83f2a] bg-rose-50/40 text-[#d83f2a] font-extrabold'
+                          : 'border-slate-200 text-slate-600 font-bold hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-xs">Quantity (Weight / Portion)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Common Fields Section */}
+            <div className="pt-3 border-t border-slate-100 space-y-4">
+
+              {/* Item Image */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  صورة العنصر (رفع وقص 512x512 أو رابط)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={imageInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleImageFileChange}
                     className="hidden"
                   />
-                </label>
-                <input
-                  type="text"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="أو ضع رابط الصورة هنا..."
-                  className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-                />
-              </div>
-              {imageUrl && (
-                <div className="mt-2 w-16 h-16 rounded-xl border border-slate-200 overflow-hidden">
-                  <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="cursor-pointer px-4 py-2 bg-[#d83f2a] hover:bg-[#c23420] text-white font-bold text-xs rounded-xl shadow-xs transition shrink-0"
+                  >
+                    ✂️ رفع وقص صورة
+                  </button>
+                  <input
+                    type="text"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="أو ضع رابط الصورة هنا..."
+                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+                  />
                 </div>
-              )}
-            </div>
+                {imageUrl && (
+                  <div className="mt-2.5 w-20 h-20 rounded-2xl border border-slate-200 overflow-hidden relative group shadow-2xs">
+                    <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-extrabold transition"
+                    >
+                      تغيير / قص
+                    </button>
+                  </div>
+                )}
+              </div>
 
             {/* Status Options */}
             <div>
@@ -499,6 +654,6 @@ export const AddEditMenuItemModal: React.FC<AddEditMenuItemModalProps> = ({
         </form>
       </div>
     </div>
+    </>
   );
 };
-

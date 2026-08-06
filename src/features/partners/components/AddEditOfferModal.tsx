@@ -69,7 +69,14 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
   const [contactWhatsapp, setContactWhatsapp] = useState('');
   const [contactMapUrl, setContactMapUrl] = useState('');
 
+  // Image Crop & Resize Modal State (Must be declared before early return for React Rules of Hooks)
+  const [cropRawSrc, setCropRawSrc] = useState<string | null>(null);
+  const [isCropOpen, setIsCropOpen] = useState<boolean>(false);
+  const [cropZoom, setCropZoom] = useState<number>(1);
+  const [cropOffset, setCropOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const cropImageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (editingOffer) {
@@ -119,10 +126,46 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === 'string') setImageUrl(reader.result);
+      if (typeof reader.result === 'string') {
+        setCropRawSrc(reader.result);
+        setCropZoom(1);
+        setCropOffset({ x: 0, y: 0 });
+        setIsCropOpen(true);
+      }
     };
     reader.readAsDataURL(file);
     e.target.value = '';
+  };
+
+  const handleApplyCrop = () => {
+    if (!cropRawSrc) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = cropRawSrc;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const targetDimension = 512;
+      canvas.width = targetDimension;
+      canvas.height = targetDimension;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetDimension, targetDimension);
+
+        const aspect = img.width / img.height;
+        let drawW = targetDimension * cropZoom;
+        let drawH = (targetDimension / aspect) * cropZoom;
+
+        const drawX = (targetDimension - drawW) / 2 + cropOffset.x;
+        const drawY = (targetDimension - drawH) / 2 + cropOffset.y;
+
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        setImageUrl(croppedDataUrl);
+      }
+      setIsCropOpen(false);
+      setCropRawSrc(null);
+    };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -149,89 +192,192 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn" dir="rtl">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-start justify-between">
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900 leading-snug">
-              {editingOffer ? 'تعديل العرض' : 'إضافة عرض جديد'}
-            </h3>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">العروض المرتبطة بهذا الشريك</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition cursor-pointer mt-1"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <>
+      {/* 1. Image Crop & Resize Modal */}
+      {isCropOpen && cropRawSrc && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn" dir="rtl">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-5 space-y-4 text-center">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <span>✂️</span>
+                <span>قص وضبط صورة العرض (512x512)</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCropOpen(false);
+                  setCropRawSrc(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
 
-        {/* Language Tabs */}
-        <div className="px-6 pt-3 flex items-center gap-5 border-b border-slate-100">
-          <button
-            type="button"
-            onClick={() => setLangTab('ar')}
-            className={`pb-2 text-xs font-bold border-b-2 transition cursor-pointer ${
-              langTab === 'ar' ? 'text-[#d83f2a] border-[#d83f2a]' : 'text-slate-500 border-transparent'
-            }`}
-          >
-            العربية
-          </button>
-          <button
-            type="button"
-            onClick={() => setLangTab('en')}
-            className={`pb-2 text-xs font-bold border-b-2 transition cursor-pointer ${
-              langTab === 'en' ? 'text-[#d83f2a] border-[#d83f2a]' : 'text-slate-500 border-transparent'
-            }`}
-          >
-            English
-          </button>
-        </div>
-
-        {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Offer Image */}
-          <div className="flex items-start gap-4">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageFile}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              title="اختر صورة من جهازك"
-              className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 hover:border-[#d83f2a] hover:text-[#d83f2a] flex flex-col items-center justify-center text-slate-400 shrink-0 overflow-hidden gap-1 transition cursor-pointer"
-            >
-              {imageUrl ? (
-                <img src={imageUrl} alt="Offer" className="w-full h-full object-cover" />
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4" />
-                  </svg>
-                  <span className="text-[10px] font-bold">صورة العرض</span>
-                </>
-              )}
-            </button>
-            <div className="flex-1 space-y-1.5">
-              <label className="block text-xs font-bold text-slate-600">رابط الصورة (اختياري)</label>
-              <input
-                type="url"
-                dir="ltr"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-                className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium text-left focus:outline-none focus:border-[#d83f2a] transition"
+            {/* Crop Canvas Preview Box */}
+            <div className="relative w-64 h-64 mx-auto rounded-2xl border-2 border-dashed border-[#d83f2a] overflow-hidden bg-slate-950 shadow-inner flex items-center justify-center">
+              <img
+                ref={cropImageRef}
+                src={cropRawSrc}
+                alt="Crop preview"
+                style={{
+                  transform: `scale(${cropZoom}) translate(${cropOffset.x / cropZoom}px, ${cropOffset.y / cropZoom}px)`,
+                  transition: 'transform 0.05s ease-out',
+                }}
+                className="max-w-full max-h-full object-contain pointer-events-none"
               />
-              <p className="text-[11px] text-slate-400">الصورة ستظهر للمستخدمين في العرض</p>
+              <div className="absolute inset-0 border border-white/30 pointer-events-none rounded-2xl"></div>
+            </div>
+
+            {/* Controls: Zoom & Offset */}
+            <div className="space-y-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 text-right">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>التكبير والقص (Zoom)</span>
+                  <span className="text-[#d83f2a]">{cropZoom.toFixed(1)}x</span>
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={cropZoom}
+                  onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                  className="w-full accent-[#d83f2a] cursor-pointer"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-center text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setCropOffset((prev) => ({ ...prev, y: prev.y - 15 }))}
+                  className="py-1 px-2 bg-white rounded-lg border border-slate-200 font-bold hover:bg-slate-100"
+                >
+                  ⬆️ تحريك لأعلى
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCropOffset((prev) => ({ ...prev, y: prev.y + 15 }))}
+                  className="py-1 px-2 bg-white rounded-lg border border-slate-200 font-bold hover:bg-slate-100"
+                >
+                  ⬇️ تحريك لأسفل
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleApplyCrop}
+                className="flex-1 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c23420] text-white font-extrabold text-xs shadow-md shadow-[#d83f2a]/20 transition cursor-pointer"
+              >
+                اعتماد الصورة وملاءمة الحجم
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCropOpen(false);
+                  setCropRawSrc(null);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+              >
+                إلغاء
+              </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 2. Main Add/Edit Offer Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn" dir="rtl">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-slate-100 flex items-start justify-between">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 leading-snug">
+                {editingOffer ? 'تعديل العرض' : 'إضافة عرض جديد'}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">العروض المرتبطة بهذا الشريك</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition cursor-pointer mt-1"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Language Tabs */}
+          <div className="px-6 pt-3 flex items-center gap-5 border-b border-slate-100">
+            <button
+              type="button"
+              onClick={() => setLangTab('ar')}
+              className={`pb-2 text-xs font-bold border-b-2 transition cursor-pointer ${
+                langTab === 'ar' ? 'text-[#d83f2a] border-[#d83f2a]' : 'text-slate-500 border-transparent'
+              }`}
+            >
+              العربية
+            </button>
+            <button
+              type="button"
+              onClick={() => setLangTab('en')}
+              className={`pb-2 text-xs font-bold border-b-2 transition cursor-pointer ${
+                langTab === 'en' ? 'text-[#d83f2a] border-[#d83f2a]' : 'text-slate-500 border-transparent'
+              }`}
+            >
+              English
+            </button>
+          </div>
+
+          {/* Modal Form */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+            {/* Offer Image */}
+            <div className="flex items-start gap-4">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageFile}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                title="اختر صورة من جهازك وقصها"
+                className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 hover:border-[#d83f2a] hover:text-[#d83f2a] flex flex-col items-center justify-center text-slate-400 shrink-0 overflow-hidden gap-1 transition cursor-pointer relative group"
+              >
+                {imageUrl ? (
+                  <>
+                    <img src={imageUrl} alt="Offer" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-extrabold transition">
+                      تعديل / قص
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4" />
+                    </svg>
+                    <span className="text-[10px] font-bold">قص الصورة</span>
+                  </>
+                )}
+              </button>
+              <div className="flex-1 space-y-1.5">
+                <label className="block text-xs font-bold text-slate-600">صورة العرض (رفع وقص 512x512 أو رابط)</label>
+                <input
+                  type="url"
+                  dir="ltr"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium text-left focus:outline-none focus:border-[#d83f2a] transition"
+                />
+                <p className="text-[11px] text-slate-400">يمكنك رفع صورة وقصها أبعاد 512x512 أو إدخال رابط مباشر</p>
+              </div>
+            </div>
 
           {/* Title & Details */}
           {langTab === 'ar' ? (
@@ -511,6 +657,6 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
         </form>
       </div>
     </div>
+    </>
   );
 };
-

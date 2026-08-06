@@ -131,7 +131,7 @@ export const MOCK_DEFAULT_OFFERS: Offer[] = [
     startDate: '2026-08-05',
     endDate: '2026-08-20',
     status: 'active',
-    publishingScope: 'custom_branches',
+    publishingScope: 'specific_branch',
     branchIds: ['branch-1'],
   },
   {
@@ -156,7 +156,7 @@ export const MOCK_DEFAULT_OFFERS: Offer[] = [
     startDate: '2026-08-01',
     endDate: '2026-09-15',
     status: 'active',
-    publishingScope: 'custom_branches',
+    publishingScope: 'specific_branch',
     branchIds: ['branch-2', 'branch-4'],
   },
 ];
@@ -254,7 +254,7 @@ export const MOCK_DEFAULT_JOBS: JobPosition[] = [
       whatsapp: '+962 7 9123 4567',
     },
     status: 'open',
-    publishingScope: 'custom_branches',
+    publishingScope: 'specific_branch',
     branchIds: ['branch-1', 'branch-2'],
   },
   {
@@ -285,7 +285,7 @@ export const MOCK_DEFAULT_JOBS: JobPosition[] = [
       whatsapp: '+962 7 9876 5432',
     },
     status: 'open',
-    publishingScope: 'custom_branches',
+    publishingScope: 'specific_branch',
     branchIds: ['branch-2'],
   },
   {
@@ -402,7 +402,7 @@ export const MOCK_DEFAULT_MENU_ITEMS: MenuItem[] = [
     unitType: 'quantity',
     status: 'available',
     imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=300&q=80',
-    publishingScope: 'custom_branches',
+    publishingScope: 'specific_branch',
     branchIds: ['branch-1', 'branch-2'],
   },
   {
@@ -412,7 +412,7 @@ export const MOCK_DEFAULT_MENU_ITEMS: MenuItem[] = [
     nameEn: 'Express Home Delivery Fee',
     category: 'توصيل',
     price: 1.50,
-    unitType: 'number',
+    unitType: 'count',
     status: 'available',
     publishingScope: 'all_branches',
   },

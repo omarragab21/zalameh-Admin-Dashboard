@@ -8,7 +8,6 @@ import {
   fetchStaticPagesFromFirestore,
   updateStaticPageInFirestore,
   subscribeToStaticPages,
-  seedInitialStaticPages,
 } from '../services/firebaseContentService';
 
 export const ContentManagementPage: React.FC = () => {

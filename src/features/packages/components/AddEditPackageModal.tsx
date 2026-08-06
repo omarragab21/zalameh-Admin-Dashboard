@@ -4,7 +4,7 @@ import type { Package, PackageDuration, PackageStatus } from '../types/package.t
 interface AddEditPackageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Partial<Package>) => void;
+  onSave: (data: Partial<Package>) => void | Promise<void>;
   editingPackage?: Package | null;
 }
 
@@ -25,6 +25,8 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'basic' | 'features'>('basic');
   const [activeLang, setActiveLang] = useState<'ar' | 'en'>('ar');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Basic Info State
   const [nameAr, setNameAr] = useState('');
@@ -84,7 +86,7 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
       setPrice(0);
       setDuration('monthly');
 
-      setFeatures(['قوائم مميزة', 'إدارة العروض']);
+      setFeatures([]);
 
       setMaxOffers('');
       setMaxJobs('');
@@ -100,6 +102,7 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
     }
     setActiveTab('basic');
     setActiveLang('ar');
+    setSaveError(null);
   }, [editingPackage, isOpen]);
 
   if (!isOpen) return null;
@@ -123,34 +126,42 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nameAr.trim()) return;
+    if (!nameAr.trim() || isSaving) return;
 
-    onSave({
-      nameAr,
-      nameEn: nameEn.trim() || nameAr.trim(),
-      descriptionAr,
-      descriptionEn,
-      price: Number(price) || 0,
-      duration,
-      features,
-      permissions: {
-        maxOffers: maxOffers !== '' ? Number(maxOffers) : null,
-        maxJobs: maxJobs !== '' ? Number(maxJobs) : null,
-        maxPromoCodes: maxPromoCodes !== '' ? Number(maxPromoCodes) : null,
-        maxMenuItems: maxMenuItems !== '' ? Number(maxMenuItems) : null,
-        maxImages: maxImages !== '' ? Number(maxImages) : null,
-      },
-      settings: {
-        isFeaturedPartner,
-        priorityInSearch,
-        isFeaturedPackage,
-        status,
-        displayOrder: Number(displayOrder) || 1,
-      },
-    });
-    onClose();
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        nameAr,
+        nameEn: nameEn.trim() || nameAr.trim(),
+        descriptionAr,
+        descriptionEn,
+        price: Number(price) || 0,
+        duration,
+        features,
+        permissions: {
+          maxOffers: maxOffers !== '' ? Number(maxOffers) : null,
+          maxJobs: maxJobs !== '' ? Number(maxJobs) : null,
+          maxPromoCodes: maxPromoCodes !== '' ? Number(maxPromoCodes) : null,
+          maxMenuItems: maxMenuItems !== '' ? Number(maxMenuItems) : null,
+          maxImages: maxImages !== '' ? Number(maxImages) : null,
+        },
+        settings: {
+          isFeaturedPartner,
+          priorityInSearch,
+          isFeaturedPackage,
+          status,
+          displayOrder: Number(displayOrder) || 1,
+        },
+      });
+      onClose();
+    } catch (err: any) {
+      setSaveError(err?.message || 'تعذر حفظ الباقة');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -564,21 +575,29 @@ export const AddEditPackageModal: React.FC<AddEditPackageModalProps> = ({
             </div>
           )}
 
+          {saveError && (
+            <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+              {saveError}
+            </p>
+          )}
+
           {/* Modal Footer */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 font-bold text-xs transition cursor-pointer"
+              disabled={isSaving}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 font-bold text-xs transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               إلغاء
             </button>
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c23420] text-white font-extrabold text-xs shadow-md shadow-[#d83f2a]/20 transition cursor-pointer"
+              disabled={isSaving}
+              className="px-6 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c23420] text-white font-extrabold text-xs shadow-md shadow-[#d83f2a]/20 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {editingPackage ? 'حفظ التغييرات' : 'إضافة الباقة'}
+              {isSaving ? 'جاري الحفظ...' : editingPackage ? 'حفظ التغييرات' : 'إضافة الباقة'}
             </button>
           </div>
         </form>
