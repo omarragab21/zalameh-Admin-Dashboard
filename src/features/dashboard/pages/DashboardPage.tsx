@@ -21,7 +21,7 @@ const ACTIVE_TAB_KEY = 'zalameh_active_nav_tab';
 export const DashboardPage: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Initialize active tab from URL query param "?tab=..." or localStorage, defaulting to 'categories'
+  // Initialize active tab from URL query param "?tab=..." or localStorage, defaulting to 'partners'
   const [activeItem, setActiveItem] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -30,7 +30,7 @@ export const DashboardPage: React.FC = () => {
       const saved = localStorage.getItem(ACTIVE_TAB_KEY);
       if (saved) return saved;
     }
-    return 'categories';
+    return 'dashboard';
   });
 
   // Sync active tab with localStorage & URL search params on tab change
@@ -41,6 +41,8 @@ export const DashboardPage: React.FC = () => {
       if (typeof window !== 'undefined' && window.history.pushState) {
         const url = new URL(window.location.href);
         url.searchParams.set('tab', id);
+        url.searchParams.delete('partner_id');
+        url.searchParams.delete('brand_id');
         window.history.pushState({}, '', url.toString());
       }
     } catch {
@@ -55,6 +57,9 @@ export const DashboardPage: React.FC = () => {
       const tabParam = params.get('tab');
       if (tabParam) {
         setActiveItem(tabParam);
+      } else {
+        const saved = localStorage.getItem(ACTIVE_TAB_KEY);
+        setActiveItem(saved || 'partners');
       }
     };
     window.addEventListener('popstate', handlePopState);

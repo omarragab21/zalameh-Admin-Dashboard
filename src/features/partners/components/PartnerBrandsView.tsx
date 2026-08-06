@@ -194,12 +194,29 @@ export const PartnerBrandsView: React.FC<PartnerBrandsViewProps> = ({
                     {brand.descriptionAr || 'لا يوجد وصف خاص بهذه العلامة التجارية'}
                   </p>
 
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-200/70 text-slate-700">
-                      {brand.categoryName}
+                  {/* Category & Subcategories Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                    {/* Primary Category */}
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-200/80 text-slate-800 flex items-center gap-1">
+                      <span>🏷️</span>
+                      <span>{brand.categoryName || 'عام'}</span>
                     </span>
+
+                    {/* Subcategories */}
+                    {brand.subcategoryNames && brand.subcategoryNames.length > 0 && (
+                      brand.subcategoryNames.map((subCat) => (
+                        <span
+                          key={subCat}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100/80"
+                        >
+                          {subCat}
+                        </span>
+                      ))
+                    )}
+
+                    {/* Status Pill */}
                     <span
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold ms-auto ${
                         brand.status === 'active'
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-slate-200 text-slate-600'
@@ -217,11 +234,11 @@ export const PartnerBrandsView: React.FC<PartnerBrandsViewProps> = ({
                       e.stopPropagation();
                       onManageBrandOffers(brand);
                     }}
-                    className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-extrabold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
                   >
-                    <span>العروض ({brand.offersCount || 0})</span>
+                    <span>تفاصيل العلامة التجارية</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
 

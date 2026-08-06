@@ -1,4 +1,4 @@
-import { authService } from '../../../../core/auth/authService';
+import { authService, handleUnauthorizedResponse } from '../../../../core/auth/authService';
 import { sendTerminalLog } from '../../../../core/utils/terminalLogger';
 import type {
   Partner,
@@ -9,6 +9,7 @@ import type {
   PartnerFilterStatus,
 } from '../../domain/entities/partner.entity';
 import { PartnerStatusEnum } from '../../domain/entities/partner.entity';
+import { mapBrandFromApi } from './brandApiService';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL !== '/api/v1'
@@ -125,9 +126,12 @@ export function mapPartnerFromApi(item: any): Partner {
   const nameAr = item.name_ar || item.nameAr || item.name || item.name_en || '';
   const nameEn = item.name_en || item.nameEn || item.name || nameAr || '';
 
+  const rawBrands = Array.isArray(item.brands) ? item.brands : [];
+  const brands = rawBrands.map((b: any) => mapBrandFromApi(b));
+
   const brandsCount = parseNonNegativeInteger(
     item.brands_count ?? (Array.isArray(item.brands) ? item.brands.length : 0)
-  ) ?? 0;
+  ) ?? brands.length;
 
   return {
     id: String(item.id ?? `partner-${Date.now()}`),
@@ -146,7 +150,7 @@ export function mapPartnerFromApi(item: any): Partner {
     createdAt: item.created_at || item.createdAt || new Date().toISOString(),
     updatedAt: item.updated_at || item.updatedAt,
     brandsCount,
-    brands: Array.isArray(item.brands) ? item.brands : [],
+    brands,
   };
 }
 
@@ -390,6 +394,9 @@ export const partnerApiService = {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          handleUnauthorizedResponse();
+        }
         const errorJson = await response.json().catch(() => ({}));
         const message = parseApiErrorMessage(errorJson, 'فشل حذف الشريك');
         sendTerminalLog({ type: 'API_ERROR', method: 'DELETE', url, status: response.status, message });

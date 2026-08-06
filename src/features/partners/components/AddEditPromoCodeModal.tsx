@@ -27,6 +27,8 @@ export const AddEditPromoCodeModal: React.FC<AddEditPromoCodeModalProps> = ({
 
   const [code, setCode] = useState('');
   const [usageLocation, setUsageLocation] = useState<UsageLocation>('store_and_website');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<PromoCodeStatus>('active');
   const [publishingScope, setPublishingScope] = useState<PublishingScope>('all_branches');
   const [branchId, setBranchId] = useState<string>('');
@@ -41,6 +43,8 @@ export const AddEditPromoCodeModal: React.FC<AddEditPromoCodeModalProps> = ({
       setTermsEn(editingPromoCode.termsEn || '');
       setCode(editingPromoCode.code || '');
       setUsageLocation(editingPromoCode.usageLocation || 'store_and_website');
+      setStartDate(editingPromoCode.startDate || '');
+      setEndDate(editingPromoCode.endDate || '');
       setStatus(editingPromoCode.status || 'active');
       setPublishingScope(editingPromoCode.publishingScope || 'all_branches');
       setBranchId(editingPromoCode.branchId || '');
@@ -53,6 +57,8 @@ export const AddEditPromoCodeModal: React.FC<AddEditPromoCodeModalProps> = ({
       setTermsEn('');
       setCode('SAVE20');
       setUsageLocation('store_and_website');
+      setStartDate('');
+      setEndDate('');
       setStatus('active');
       setPublishingScope('all_branches');
       setBranchId('');
@@ -75,6 +81,8 @@ export const AddEditPromoCodeModal: React.FC<AddEditPromoCodeModalProps> = ({
       termsEn,
       code: code.toUpperCase().trim(),
       usageLocation,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
       status,
       publishingScope,
       branchId: publishingScope === 'specific_branch' ? branchId : undefined,
@@ -236,6 +244,32 @@ export const AddEditPromoCodeModal: React.FC<AddEditPromoCodeModalProps> = ({
               <p className="text-[11px] text-slate-400 font-medium mt-1">
                 تحول تلقائياً إلى أحرف كبيرة
               </p>
+            </div>
+
+            {/* Dates (تاريخ البدء وتاريخ الانتهاء) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  تاريخ البدء
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium focus:outline-none focus:border-[#d83f2a] transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  تاريخ الانتهاء
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium focus:outline-none focus:border-[#d83f2a] transition"
+                />
+              </div>
             </div>
 
             {/* Usage Location Options */}

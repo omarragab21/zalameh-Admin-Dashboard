@@ -13,19 +13,29 @@ export type PartnerStatus = 'active' | 'inactive' | 'pending';
 export type BrandStatus = 'active' | 'inactive';
 
 export type OfferStatus = 'active' | 'expired' | 'disabled';
+export type OfferContactMethod = 'phone' | 'whatsapp' | 'map';
+
+export interface OfferContactDetails {
+  phone?: string;
+  whatsapp?: string;
+  mapUrl?: string;
+}
 
 export interface Offer {
   id: string;
   brandId: string;
   titleAr: string;
-  titleEn: string;
+  titleEn?: string;
   descriptionAr?: string;
   descriptionEn?: string;
   imageUrl?: string;
   branchIds?: string[];
-  startDate: string;
-  endDate: string;
+  publishingScope?: PublishingScope;
+  startDate?: string;
+  endDate?: string;
   status: OfferStatus;
+  contactMethods?: OfferContactMethod[];
+  contactDetails?: OfferContactDetails;
 }
 
 export type BranchStatus = 'active' | 'inactive';
@@ -40,6 +50,7 @@ export interface Branch {
   mapUrl?: string;
   status: BranchStatus;
   isMainBranch?: boolean;
+  extraInfo?: BrandExtraInfo;
 }
 
 export type PromoCodeStatus = 'active' | 'inactive';
@@ -60,6 +71,9 @@ export interface PromoCode {
   status: PromoCodeStatus;
   publishingScope: PublishingScope;
   branchId?: string;
+  branchIds?: string[];
+  startDate?: string;
+  endDate?: string;
 }
 
 export type EmploymentType =
@@ -111,12 +125,16 @@ export interface MenuItem {
   nameAr: string;
   nameEn?: string;
   category: string;
+  categoryEn?: string;
+  descriptionAr?: string;
+  descriptionEn?: string;
   price: number;
   imageUrl?: string;
   unitType: MenuItemUnitType;
   status: MenuItemStatus;
   publishingScope: PublishingScope;
   branchId?: string;
+  branchIds?: string[];
 }
 
 export interface Brand {

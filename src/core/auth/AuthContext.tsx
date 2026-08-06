@@ -18,25 +18,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    // Check token on initial startup
-    const token = authService.getToken();
-    const user = authService.getUser();
+    const checkAuthStatus = () => {
+      const token = authService.getToken();
+      const user = authService.getUser();
 
-    if (token && user) {
-      setState({
-        user,
-        token,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-    } else {
+      if (token && user) {
+        setState({
+          user,
+          token,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      } else {
+        // If token or user is missing, force logout and redirect to login
+        authService.logout();
+        setState({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      }
+    };
+
+    checkAuthStatus();
+
+    const handleUnauthorized = () => {
+      authService.logout();
       setState({
         user: null,
         token: null,
         isAuthenticated: false,
         isLoading: false,
       });
-    }
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    window.addEventListener('storage', checkAuthStatus);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      window.removeEventListener('storage', checkAuthStatus);
+    };
   }, []);
 
   const login = async (credentials: LoginCredentials) => {

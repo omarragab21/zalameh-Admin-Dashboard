@@ -118,3 +118,10 @@ export const authService = {
     localStorage.removeItem(USER_KEY);
   },
 };
+
+export function handleUnauthorizedResponse(): void {
+  authService.logout();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth:unauthorized'));
+  }
+}

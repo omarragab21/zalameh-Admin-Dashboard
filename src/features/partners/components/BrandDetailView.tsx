@@ -1,12 +1,52 @@
-import React, { useState } from 'react';
-import type { Brand, Branch, Offer, BrandExtraInfo, PromoCode, JobPosition, MenuItem } from '../types/partner.types';
+import React, { useState, useMemo } from 'react';
+import type {
+  Brand,
+  Branch,
+  Offer,
+  BrandExtraInfo,
+  PromoCode,
+  JobPosition,
+  MenuItem,
+  PublishingScope,
+} from '../types/partner.types';
 import { PartnerSocialLinks } from './PartnerSocialLinks';
-import { BrandExtraInfoView } from './BrandExtraInfoView';
+import {
+  MOCK_DEFAULT_BRANCHES,
+  MOCK_DEFAULT_OFFERS,
+  MOCK_DEFAULT_PROMO_CODES,
+  MOCK_DEFAULT_JOBS,
+  MOCK_DEFAULT_MENU_ITEMS,
+} from '../data/mockBrandDetailsData';
+
+/**
+ * Shared branch-scope matching for offers, jobs, promo codes and menu items.
+ *
+ * These entities express their branch scope differently: some carry a list
+ * (`branchIds`), others a single id (`branchId`), and only some define
+ * `publishingScope`. This normalises all of them without reading fields that
+ * do not exist on a given entity.
+ *
+ * An item matches when the filter is unset, the item targets every branch, the
+ * item has no branch assignment at all, or its branches contain the selection.
+ */
+const matchesBranch = (
+  selectedBranchId: string,
+  item: { publishingScope?: PublishingScope; branchId?: string; branchIds?: string[] }
+): boolean => {
+  if (selectedBranchId === 'all') return true;
+  if (item.publishingScope === 'all_branches') return true;
+
+  const branchIds = item.branchIds ?? (item.branchId ? [item.branchId] : []);
+  if (branchIds.length === 0) return true;
+
+  return branchIds.includes(selectedBranchId);
+};
 
 interface BrandDetailViewProps {
   brand: Brand;
   partnerName: string;
   onBack: () => void;
+  onBackToPartnersList?: () => void;
   onEditBrand: () => void;
   onToggleStatus: () => void;
   onDeleteBrand: () => void;
@@ -32,64 +72,59 @@ interface BrandDetailViewProps {
 type DetailTab =
   | 'overview'
   | 'offers'
-  | 'jobs'
   | 'promoCodes'
+  | 'jobs'
   | 'menu'
   | 'contact'
-  | 'extraInfo'
   | 'branches';
 
 const TAB_ICONS: Record<DetailTab, React.ReactNode> = {
   overview: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
     </svg>
   ),
   offers: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-    </svg>
-  ),
-  jobs: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.5 14.5l5-5" />
     </svg>
   ),
   promoCodes: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+    </svg>
+  ),
+  jobs: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
     </svg>
   ),
   menu: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
     </svg>
   ),
   contact: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-    </svg>
-  ),
-  extraInfo: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
     </svg>
   ),
   branches: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
 };
 
 const TABS: { id: DetailTab; label: string }[] = [
-  { id: 'overview', label: 'نظرة عامة' },
+  { id: 'overview', label: 'معلومات عامة' },
   { id: 'offers', label: 'العروض' },
-  { id: 'jobs', label: 'الوظائف' },
   { id: 'promoCodes', label: 'أكواد الخصم' },
+  { id: 'jobs', label: 'الوظائف' },
   { id: 'menu', label: 'القائمة' },
   { id: 'contact', label: 'مواقع التواصل' },
-  { id: 'extraInfo', label: 'معلومات إضافية' },
   { id: 'branches', label: 'الفروع' },
 ];
 
@@ -97,6 +132,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
   brand,
   partnerName,
   onBack,
+  onBackToPartnersList,
   onEditBrand,
   onToggleStatus,
   onDeleteBrand,
@@ -119,92 +155,152 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
   onDeleteMenuItem,
 }) => {
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
-  const offers = brand.offers || [];
-  const branches = brand.branches || [];
-  const promoCodes = brand.promoCodes && brand.promoCodes.length > 0 ? brand.promoCodes : [
-    {
-      id: 'promo-1',
-      brandId: brand.id,
-      code: 'SAVE20',
-      titleAr: 'خصم 20% للعملاء الجدد',
-      usageLocation: 'store_and_website' as const,
-      status: 'active' as const,
-      publishingScope: 'all_branches' as const,
-    },
-    {
-      id: 'promo-2',
-      brandId: brand.id,
-      code: 'FIRST50',
-      titleAr: 'خصم الاشتراك الأول',
-      usageLocation: 'website' as const,
-      status: 'inactive' as const,
-      publishingScope: 'all_branches' as const,
-    },
-  ];
 
-  const jobs = brand.jobs && brand.jobs.length > 0 ? brand.jobs : [
-    {
-      id: 'job-1',
-      brandId: brand.id,
-      titleAr: 'مندوب مبيعات',
-      employmentType: 'full_time' as const,
-      contactMethods: ['phone' as const],
-      status: 'open' as const,
-      publishingScope: 'all_branches' as const,
-    },
-    {
-      id: 'job-2',
-      brandId: brand.id,
-      titleAr: 'مشرف عمليات',
-      employmentType: 'part_time' as const,
-      contactMethods: ['phone' as const],
-      status: 'closed' as const,
-      publishingScope: 'all_branches' as const,
-    },
-  ];
+  const branches: Branch[] = useMemo(
+    () => (brand.branches && brand.branches.length > 0 ? brand.branches : MOCK_DEFAULT_BRANCHES.map(b => ({ ...b, brandId: brand.id }))),
+    [brand.branches, brand.id]
+  );
+  const offers: Offer[] = useMemo(
+    () => (brand.offers && brand.offers.length > 0 ? brand.offers : MOCK_DEFAULT_OFFERS.map(o => ({ ...o, brandId: brand.id }))),
+    [brand.offers, brand.id]
+  );
+  const promoCodes: PromoCode[] = useMemo(
+    () => (brand.promoCodes && brand.promoCodes.length > 0 ? brand.promoCodes : MOCK_DEFAULT_PROMO_CODES.map(p => ({ ...p, brandId: brand.id }))),
+    [brand.promoCodes, brand.id]
+  );
+  const jobs: JobPosition[] = useMemo(
+    () => (brand.jobs && brand.jobs.length > 0 ? brand.jobs : MOCK_DEFAULT_JOBS.map(j => ({ ...j, brandId: brand.id }))),
+    [brand.jobs, brand.id]
+  );
+  const menuItems: MenuItem[] = useMemo(
+    () => (brand.menuItems && brand.menuItems.length > 0 ? brand.menuItems : MOCK_DEFAULT_MENU_ITEMS.map(m => ({ ...m, brandId: brand.id }))),
+    [brand.menuItems, brand.id]
+  );
 
-  const menuItems: MenuItem[] = brand.menuItems && brand.menuItems.length > 0 ? brand.menuItems : [
-    {
-      id: 'menu-1',
-      brandId: brand.id,
-      nameAr: 'خدمة التوصيل السريع',
-      category: 'توصيل',
-      price: 25,
-      unitType: 'count',
-      status: 'available',
-      publishingScope: 'all_branches',
-    },
-    {
-      id: 'menu-2',
-      brandId: brand.id,
-      nameAr: 'باقة التوصيل الشهرية',
-      category: 'باقات',
-      price: 199,
-      unitType: 'quantity',
-      status: 'available',
-      publishingScope: 'all_branches',
-    },
-    {
-      id: 'menu-3',
-      brandId: brand.id,
-      nameAr: 'توصيل دولي',
-      category: 'توصيل',
-      price: 150,
-      unitType: 'count',
-      status: 'unavailable',
-      publishingScope: 'all_branches',
-    },
-  ];
+  // Offers Filter States
+  const [offerSearch, setOfferSearch] = useState('');
+  const [offerBranch, setOfferBranch] = useState('all');
+  const [offerStatus, setOfferStatus] = useState('all');
+  const [offerStartDate, setOfferStartDate] = useState('');
+  const [offerEndDate, setOfferEndDate] = useState('');
+
+  // Jobs Filter States
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobBranch, setJobBranch] = useState('all');
+  const [jobStatus, setJobStatus] = useState('all');
+
+  // Promo Codes Filter States
+  const [promoSearch, setPromoSearch] = useState('');
+  const [promoBranch, setPromoBranch] = useState('all');
+  const [promoStatus, setPromoStatus] = useState('all');
+  const [promoLocation, setPromoLocation] = useState('all');
+  const [promoStartDate, setPromoStartDate] = useState('');
+  const [promoEndDate, setPromoEndDate] = useState('');
+
+  // Menu Filter States
+  const [menuSearch, setMenuSearch] = useState('');
+  const [menuBranch, setMenuBranch] = useState('all');
+  const [menuCategory, setMenuCategory] = useState('all');
+  const [menuStatus, setMenuStatus] = useState('all');
+
+  // Filtered Offers
+  const filteredOffers = useMemo(() => {
+    const q = offerSearch.toLowerCase().trim();
+    return offers.filter((o) => {
+      if (!o) return false;
+      const matchSearch =
+        !q ||
+        (typeof o.titleAr === 'string' && o.titleAr.toLowerCase().includes(q)) ||
+        (typeof o.titleEn === 'string' && o.titleEn.toLowerCase().includes(q)) ||
+        (typeof o.descriptionAr === 'string' && o.descriptionAr.toLowerCase().includes(q));
+
+      const matchStatus = offerStatus === 'all' || o.status === offerStatus;
+      const matchBranch = matchesBranch(offerBranch, o);
+
+      return matchSearch && matchStatus && matchBranch;
+    });
+  }, [offers, offerSearch, offerStatus, offerBranch]);
+
+  // Filtered Jobs
+  const filteredJobs = useMemo(() => {
+    const q = jobSearch.toLowerCase().trim();
+    return jobs.filter((j) => {
+      if (!j) return false;
+      const matchSearch = !q || (typeof j.titleAr === 'string' && j.titleAr.toLowerCase().includes(q));
+      const matchStatus = jobStatus === 'all' || j.status === jobStatus;
+      const matchBranch = matchesBranch(jobBranch, j);
+
+      return matchSearch && matchStatus && matchBranch;
+    });
+  }, [jobs, jobSearch, jobStatus, jobBranch]);
+
+  // Filtered Promo Codes
+  const filteredPromoCodes = useMemo(() => {
+    const q = promoSearch.toLowerCase().trim();
+    return promoCodes.filter((p) => {
+      if (!p) return false;
+
+      const matchSearch =
+        !q ||
+        (typeof p.code === 'string' && p.code.toLowerCase().includes(q)) ||
+        (typeof p.titleAr === 'string' && p.titleAr.toLowerCase().includes(q));
+
+      const matchStatus = promoStatus === 'all' || p.status === promoStatus;
+      const matchLocation = promoLocation === 'all' || p.usageLocation === promoLocation;
+      const matchBranch = matchesBranch(promoBranch, p);
+
+      // Date Range Filtering Logic ("من" / "إلى")
+      let matchDate = true;
+      if (promoStartDate || promoEndDate) {
+        const pStart = p.startDate || p.endDate;
+        const pEnd = p.endDate || p.startDate;
+
+        // Filter "من" (Start Date): Promo code start date must be on or after promoStartDate
+        if (promoStartDate && pStart && pStart < promoStartDate) {
+          matchDate = false;
+        }
+
+        // Filter "إلى" (End Date): Promo code end date must be on or before promoEndDate
+        if (promoEndDate && pEnd && pEnd > promoEndDate) {
+          matchDate = false;
+        }
+      }
+
+      return matchSearch && matchStatus && matchLocation && matchBranch && matchDate;
+    });
+  }, [promoCodes, promoSearch, promoStatus, promoLocation, promoBranch, promoStartDate, promoEndDate]);
+
+  // Filtered Menu Items
+  const filteredMenuItems = useMemo(() => {
+    const q = menuSearch.toLowerCase().trim();
+    return menuItems.filter((m) => {
+      if (!m) return false;
+      const matchSearch = !q || (typeof m.nameAr === 'string' && m.nameAr.toLowerCase().includes(q));
+      const matchCategory = menuCategory === 'all' || m.category === menuCategory;
+      const matchStatus = menuStatus === 'all' || m.status === menuStatus;
+      const matchBranch = matchesBranch(menuBranch, m);
+
+      return matchSearch && matchCategory && matchStatus && matchBranch;
+    });
+  }, [menuItems, menuSearch, menuCategory, menuStatus, menuBranch]);
+
+  const handleBackToPartners = () => {
+    if (onBackToPartnersList) {
+      onBackToPartnersList();
+    } else {
+      onBack();
+    }
+  };
 
   return (
     <div className="space-y-5 animate-fadeIn" dir="rtl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold">
-        <span className="hover:text-slate-600 cursor-pointer" onClick={onBack}>
+        <span className="hover:text-slate-600 cursor-pointer" onClick={handleBackToPartners}>
           الرئيسية
         </span>
         <span>‹</span>
-        <span className="hover:text-slate-600 cursor-pointer" onClick={onBack}>
+        <span className="hover:text-slate-600 cursor-pointer" onClick={handleBackToPartners}>
           إدارة الشركاء
         </span>
         <span>‹</span>
@@ -252,11 +348,10 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-extrabold text-slate-900">{brand.nameAr}</h2>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${
-                  brand.status === 'active'
-                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                    : 'bg-slate-100 text-slate-500 border border-slate-200'
-                }`}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${brand.status === 'active'
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+                  }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${brand.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                 {brand.status === 'active' ? 'نشطة' : 'غير نشطة'}
@@ -314,11 +409,10 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`pb-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === tab.id
-                ? 'text-emerald-600 border-emerald-600'
-                : 'text-slate-400 border-transparent hover:text-slate-600'
-            }`}
+            className={`pb-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${activeTab === tab.id
+              ? 'text-emerald-600 border-emerald-600'
+              : 'text-slate-400 border-transparent hover:text-slate-600'
+              }`}
           >
             {TAB_ICONS[tab.id]}
             {tab.label}
@@ -383,11 +477,10 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
               <div>
                 <p className="text-[11px] font-bold text-slate-400 mb-1.5">الحالة</p>
                 <span
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 w-fit ${
-                    brand.status === 'active'
-                      ? 'bg-emerald-50 text-emerald-600'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 w-fit ${brand.status === 'active'
+                    ? 'bg-emerald-50 text-emerald-600'
+                    : 'bg-slate-100 text-slate-500'
+                    }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${brand.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                   {brand.status === 'active' ? 'نشطة' : 'غير نشطة'}
@@ -447,10 +540,19 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
       )}
 
       {activeTab === 'offers' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
           {/* Offers Header */}
-          <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
-            <h3 className="text-base font-extrabold text-slate-900">العروض</h3>
+          <div className="p-4 sm:p-5 flex items-center justify-between gap-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">العروض</h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                {offers.length === 0
+                  ? 'لا توجد عروض مسجلة'
+                  : filteredOffers.length > 0
+                    ? `عرض ${filteredOffers.length} من إجمالي ${offers.length} عرض`
+                    : 'لا توجد نتائج مطابقة للفلتر'}
+              </p>
+            </div>
             <button
               onClick={onAddOffer}
               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5 cursor-pointer"
@@ -458,7 +560,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              إضافة عرض
+              <span>إضافة عرض</span>
             </button>
           </div>
 
@@ -473,72 +575,155 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
               <p className="text-xs text-slate-400 mb-4">أضف أول عرض لهذه العلامة التجارية ليظهر للمستخدمين.</p>
             </div>
           ) : (
-            <table className="w-full text-right">
-              <thead>
-                <tr className="border-t border-b border-slate-100 bg-slate-50/60">
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">العنوان</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الحالة</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">تاريخ البدء</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">تاريخ الانتهاء</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {offers.map((offer) => (
-                  <tr key={offer.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
-                    <td className="px-5 py-3.5 text-xs font-extrabold text-slate-900">{offer.titleAr}</td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${
-                          offer.status === 'active'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${offer.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                        {offer.status === 'active' ? 'نشط' : 'غير نشط'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-500" dir="ltr">
-                      {offer.startDate}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-500" dir="ltr">
-                      {offer.endDate}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onEditOffer(offer)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
-                          title="تعديل العرض"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => onDeleteOffer(offer.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-                          title="حذف العرض"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              {/* Offers Filter Bar */}
+              <div className="p-4 bg-slate-50/80 border-b border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-3 flex-wrap">
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    placeholder="بحث بحسب اسم العرض..."
+                    value={offerSearch}
+                    onChange={(e) => setOfferSearch(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 pr-9 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                  <svg className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full lg:w-auto flex-wrap">
+                  <select
+                    value={offerBranch}
+                    onChange={(e) => setOfferBranch(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">كل الفروع</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.nameAr}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={offerStatus}
+                    onChange={(e) => setOfferStatus(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">كل الحالات</option>
+                    <option value="active">نشط</option>
+                    <option value="inactive">غير نشط</option>
+                  </select>
+                </div>
+              </div>
+
+              {filteredOffers.length === 0 ? (
+                <div className="p-12 text-center flex flex-col items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-sm font-extrabold text-slate-900 mb-1">لا توجد نتائج مطابقة للفلتر</h4>
+                  <p className="text-xs text-slate-400">جرب تعديل كلمة البحث أو اختيار فرع / حالة أخرى.</p>
+                </div>
+              ) : (
+                <table className="w-full text-right">
+                  <thead>
+                    <tr className="border-t border-b border-slate-100 bg-slate-50/60">
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">العنوان</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">التفاصيل</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">طرق التواصل</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الحالة</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOffers.map((offer) => (
+                      <tr key={offer.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                        <td className="px-5 py-3.5 text-xs font-extrabold text-slate-900">
+                          <div>{offer.titleAr}</div>
+                          {offer.titleEn && <div className="text-[11px] text-slate-400 font-normal dir-ltr text-right">{offer.titleEn}</div>}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs text-slate-600 max-w-[200px] truncate">
+                          {offer.descriptionAr || offer.descriptionEn || '—'}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {(!offer.contactMethods || offer.contactMethods.includes('phone')) && (
+                              <span
+                                title={offer.contactDetails?.phone || 'اتصال هاتفي'}
+                                className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-100 flex items-center gap-1"
+                              >
+                                <span>📞</span>
+                                <span>هاتف</span>
+                              </span>
+                            )}
+                            {offer.contactMethods?.includes('whatsapp') && (
+                              <span
+                                title={offer.contactDetails?.whatsapp || 'واتساب'}
+                                className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1"
+                              >
+                                <span>💬</span>
+                                <span>واتساب</span>
+                              </span>
+                            )}
+                            {offer.contactMethods?.includes('map') && (
+                              <span
+                                title={offer.contactDetails?.mapUrl || 'رابط الخريطة'}
+                                className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-100 flex items-center gap-1"
+                              >
+                                <span>🗺️</span>
+                                <span>موقع</span>
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${offer.status === 'active'
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-slate-100 text-slate-500'
+                              }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${offer.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                            {offer.status === 'active' ? 'نشط' : 'غير نشط'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => onEditOffer(offer)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
+                              title="تعديل العرض"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => onDeleteOffer(offer.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                              title="حذف العرض"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
           )}
         </div>
       )}
 
       {activeTab === 'branches' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
           {/* Branches Header */}
-          <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
+          <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-extrabold text-slate-900">الفروع</h3>
               <p className="text-[11px] text-slate-400 font-medium mt-0.5">
@@ -547,129 +732,173 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
             </div>
             <button
               onClick={onAddBranch}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/20 transition flex items-center gap-1.5 cursor-pointer"
+              className="px-4.5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-red-600/20 transition flex items-center gap-2 cursor-pointer"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
-              إضافة فرع
+              <span>إضافة فرع</span>
             </button>
           </div>
 
           {branches.length === 0 ? (
-            <div className="p-12 text-center flex flex-col items-center justify-center border-t border-slate-100">
-              <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+            <div className="p-12 text-center flex flex-col items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-3 text-xl">
+                📍
               </div>
               <h4 className="text-sm font-extrabold text-slate-900 mb-1">لا توجد فروع بعد</h4>
               <p className="text-xs text-slate-400">أضف أول فرع لهذه العلامة التجارية.</p>
             </div>
           ) : (
-            <table className="w-full text-right">
-              <thead>
-                <tr className="border-t border-b border-slate-100 bg-slate-50/60">
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">اسم الفرع</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">العنوان</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الهاتف</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الحالة</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {branches.map((branch) => (
-                  <tr key={branch.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-extrabold text-slate-900">{branch.nameAr}</p>
-                            {branch.isMainBranch && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
-                                ⭐ فرع رئيسي
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] font-semibold text-slate-400" dir="ltr">{branch.nameEn}</p>
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {branches.filter(Boolean).map((branch, idx) => (
+                <div
+                  key={branch.id || `branch-${idx}`}
+                  className="bg-slate-50/70 hover:bg-white rounded-2xl p-5 border border-slate-200 hover:border-red-500/40 hover:shadow-md transition flex flex-col justify-between group"
+                >
+                  <div>
+                    {/* Header: Top Badges & Status Row */}
+                    <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-200/50">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-red-50 text-red-500 font-extrabold flex items-center justify-center text-sm border border-red-100/80 shrink-0">
+                          📍
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-500">
-                      <div className="flex flex-col gap-1">
-                        <span>{branch.address || '—'}</span>
-                        {branch.mapUrl && (
-                          <a
-                            href={branch.mapUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] font-bold text-sky-600 hover:text-sky-800 flex items-center gap-1 hover:underline w-fit"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span>فتح الموقع على الخريطة 📍</span>
-                          </a>
+                        {branch.isMainBranch && (
+                          <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                            ⭐ فرع رئيسي
+                          </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-500" dir="ltr">
-                      {branch.phone || '—'}
-                    </td>
-                    <td className="px-5 py-3.5">
+
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${
-                          branch.status === 'active'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 shrink-0 whitespace-nowrap ${branch.status === 'active'
+                          ? 'bg-emerald-50 text-emerald-600'
+                          : 'bg-slate-100 text-slate-500'
+                          }`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${branch.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                         {branch.status === 'active' ? 'نشط' : 'غير نشط'}
                       </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onEditBranch(branch)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
-                          title="تعديل الفرع"
+                    </div>
+
+                    {/* Branch Full Title & English Subtitle */}
+                    <div className="mb-3">
+                      <h4 className="font-extrabold text-slate-900 text-base group-hover:text-red-600 transition leading-snug">
+                        {branch.nameAr || 'فرع بدون اسم'}
+                      </h4>
+                      {branch.nameEn && (
+                        <span className="text-xs text-slate-400 font-medium block dir-ltr text-right mt-0.5">
+                          {branch.nameEn}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Address & Map */}
+                    <div className="mb-3 space-y-1 bg-white p-3 rounded-xl border border-slate-100">
+                      <p className="text-xs font-semibold text-slate-700 flex items-start gap-1.5">
+                        <span className="text-slate-400 shrink-0">🏙️</span>
+                        <span>{branch.address || 'لم يتم تحديد العنوان'}</span>
+                      </p>
+                      {branch.mapUrl && (
+                        <a
+                          href={branch.mapUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-bold text-sky-600 hover:text-sky-800 flex items-center gap-1 hover:underline pt-0.5"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                        </button>
-                        <button
-                          onClick={() => onToggleBranchStatus(branch)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
-                          title={branch.status === 'active' ? 'إخفاء الفرع' : 'إظهار الفرع'}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => onDeleteBranch(branch.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-                          title="حذف الفرع"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                          <span>فتح الموقع على الخريطة 📍</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Contact Pills */}
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      {(branch.phone || branch.extraInfo?.branchPhone) && (
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 flex items-center gap-1" dir="ltr">
+                          📞 {branch.phone || branch.extraInfo?.branchPhone}
+                        </span>
+                      )}
+                      {branch.extraInfo?.whatsapp && (
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 flex items-center gap-1" dir="ltr">
+                          💬 {branch.extraInfo.whatsapp}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Additional Info summary */}
+                    {branch.extraInfo && (
+                      <div className="pt-3 border-t border-slate-200/60 space-y-2 text-xs">
+                        <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
+                          <span className="text-slate-500 flex items-center gap-1">
+                            🕒 ساعات العمل:
+                            <span className="text-slate-800 font-extrabold">
+                              {Array.isArray(branch.extraInfo.workingHours) && branch.extraInfo.workingHours.length > 0
+                                ? `${branch.extraInfo.workingHours.filter((d) => d && d.isOpen).length} أيام عمل`
+                                : 'طوال الأسبوع'}
+                            </span>
+                          </span>
+
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${branch.extraInfo.deliveryEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                            🚚 {branch.extraInfo.deliveryEnabled ? 'توصيل متاح' : 'بدون توصيل'}
+                          </span>
+                        </div>
+
+                        {Array.isArray(branch.extraInfo.paymentMethods) && branch.extraInfo.paymentMethods.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 pt-1">
+                            <span className="text-[10px] font-bold text-slate-400">طرق الدفع:</span>
+                            {branch.extraInfo.paymentMethods.map((pm, pmIdx) => (
+                              <span key={pm || pmIdx} className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200/60">
+                                {pm === 'cash' ? 'نقداً' : pm}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="pt-3 mt-4 border-t border-slate-200/70 flex items-center justify-between">
+                    <button
+                      onClick={() => onEditBranch(branch)}
+                      className="text-xs font-bold text-sky-600 hover:text-sky-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      <span>تعديل</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onToggleBranchStatus(branch)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
+                        title={branch.status === 'active' ? 'إخفاء الفرع' : 'إظهار الفرع'}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => onDeleteBranch(branch.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                        title="حذف الفرع"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -677,8 +906,17 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
       {activeTab === 'promoCodes' && (
         <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
           {/* Promo Codes Header */}
-          <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
-            <h3 className="text-base font-extrabold text-slate-900">أكواد الخصم</h3>
+          <div className="p-4 sm:p-5 flex items-center justify-between gap-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">أكواد الخصم</h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                {promoCodes.length === 0
+                  ? 'لا توجد أكواد خصم مسجلة'
+                  : filteredPromoCodes.length > 0
+                    ? `عرض ${filteredPromoCodes.length} من إجمالي ${promoCodes.length} كود خصم`
+                    : 'لا توجد نتائج مطابقة للفلتر'}
+              </p>
+            </div>
             <button
               onClick={onAddPromoCode}
               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5 cursor-pointer"
@@ -701,70 +939,168 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
               <p className="text-xs text-slate-400">أضف أول كود خصم لهذه العلامة التجارية ليظهر للمستخدمين.</p>
             </div>
           ) : (
-            <table className="w-full text-right">
-              <thead>
-                <tr className="border-t border-b border-slate-100 bg-slate-50/60">
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">العنوان</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الكود</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">مكان الاستخدام</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الحالة</th>
-                  <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {promoCodes.map((promo) => (
-                  <tr key={promo.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
-                    <td className="px-5 py-3.5 text-xs font-extrabold text-slate-900">{promo.titleAr}</td>
-                    <td className="px-5 py-3.5 font-mono text-xs" dir="ltr">
-                      <span className="px-3 py-1 rounded-lg text-xs font-extrabold bg-sky-50 text-sky-700 border border-sky-100 w-fit inline-block">
-                        {promo.code}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs font-bold text-slate-600">
-                      {promo.usageLocation === 'store_and_website'
-                        ? 'متجر وموقع'
-                        : promo.usageLocation === 'website'
-                        ? 'موقع'
-                        : 'متجر'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${
-                          promo.status === 'active'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${promo.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                        {promo.status === 'active' ? 'نشط' : 'غير نشط'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onEditPromoCode && onEditPromoCode(promo)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
-                          title="تعديل كود الخصم"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => onDeletePromoCode && onDeletePromoCode(promo.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-                          title="حذف كود الخصم"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              {/* Promo Codes Filter Bar */}
+              <div className="p-4 bg-slate-50/80 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    placeholder="بحث بحسب الكود أو العنوان..."
+                    value={promoSearch}
+                    onChange={(e) => setPromoSearch(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 pr-9 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                  <svg className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+                  {/* Location Usage Filter */}
+                  <select
+                    value={promoLocation}
+                    onChange={(e) => setPromoLocation(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">كل الأماكن</option>
+                    <option value="store_and_website">متجر وموقع</option>
+                    <option value="website">موقع فقط</option>
+                    <option value="store">متجر فقط</option>
+                  </select>
+
+                  <select
+                    value={promoBranch}
+                    onChange={(e) => setPromoBranch(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">كل الفروع</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.nameAr}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={promoStatus}
+                    onChange={(e) => setPromoStatus(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">كل الحالات</option>
+                    <option value="active">نشط</option>
+                    <option value="inactive">غير نشط</option>
+                  </select>
+
+                  {/* Start Date Filter */}
+                  <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl py-1.5 px-3">
+                    <span className="text-[11px] font-bold text-slate-400">من:</span>
+                    <input
+                      type="date"
+                      value={promoStartDate}
+                      onChange={(e) => setPromoStartDate(e.target.value)}
+                      className="text-xs font-bold text-slate-700 focus:outline-none bg-transparent"
+                    />
+                  </div>
+
+                  {/* End Date Filter */}
+                  <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl py-1.5 px-3">
+                    <span className="text-[11px] font-bold text-slate-400">إلى:</span>
+                    <input
+                      type="date"
+                      value={promoEndDate}
+                      onChange={(e) => setPromoEndDate(e.target.value)}
+                      className="text-xs font-bold text-slate-700 focus:outline-none bg-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {filteredPromoCodes.length === 0 ? (
+                <div className="p-12 text-center flex flex-col items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-sm font-extrabold text-slate-900 mb-1">لا توجد نتائج مطابقة للفلتر</h4>
+                  <p className="text-xs text-slate-400">جرب تعديل كلمة البحث، تاريخ البدء والانتهاء، أو مكان الاستخدام.</p>
+                </div>
+              ) : (
+                <table className="w-full text-right">
+                  <thead>
+                    <tr className="border-t border-b border-slate-100 bg-slate-50/60">
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">العنوان</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الكود</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">مكان الاستخدام</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">فترة الصلاحية</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الحالة</th>
+                      <th className="px-5 py-3 text-[11px] font-bold text-slate-400">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPromoCodes.map((promo) => (
+                      <tr key={promo.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                        <td className="px-5 py-3.5 text-xs font-extrabold text-slate-900">{promo.titleAr}</td>
+                        <td className="px-5 py-3.5 font-mono text-xs" dir="ltr">
+                          <span className="px-3 py-1 rounded-lg text-xs font-extrabold bg-sky-50 text-sky-700 border border-sky-100 w-fit inline-block">
+                            {promo.code}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-xs font-bold text-slate-600">
+                          {promo.usageLocation === 'store_and_website'
+                            ? 'متجر وموقع'
+                            : promo.usageLocation === 'website'
+                              ? 'موقع'
+                              : 'متجر'}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">
+                          {promo.startDate || promo.endDate ? (
+                            <div className="flex items-center gap-1.5 font-mono">
+                              <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-bold text-slate-700">{promo.startDate || '—'}</span>
+                              <span className="text-slate-400 font-bold text-xs">←</span>
+                              <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-bold text-slate-700">{promo.endDate || '—'}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">غير محدد</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${promo.status === 'active'
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-slate-100 text-slate-500'
+                              }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${promo.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                            {promo.status === 'active' ? 'نشط' : 'غير نشط'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => onEditPromoCode && onEditPromoCode(promo)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition cursor-pointer"
+                              title="تعديل كود الخصم"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => onDeletePromoCode && onDeletePromoCode(promo.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                              title="حذف كود الخصم"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
           )}
         </div>
       )}
@@ -776,7 +1112,11 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
             <div>
               <h3 className="text-base font-extrabold text-slate-900">الوظائف والفرص الشاغرة</h3>
               <p className="text-xs text-slate-400 font-medium mt-0.5">
-                {jobs.length > 0 ? `${jobs.length} وظيفة مسجلة` : 'لا توجد وظائف مسجلة'}
+                {jobs.length === 0
+                  ? 'لا توجد وظائف مسجلة'
+                  : filteredJobs.length > 0
+                    ? `عرض ${filteredJobs.length} من إجمالي ${jobs.length} وظيفة`
+                    : 'لا توجد نتائج مطابقة للفلتر'}
               </p>
             </div>
             <button
@@ -790,19 +1130,60 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
             </button>
           </div>
 
-          {jobs.length === 0 ? (
+          {/* Jobs Filter Bar */}
+          <div className="p-4 bg-slate-50/80 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="بحث في المسمى الوظيفي..."
+                value={jobSearch}
+                onChange={(e) => setJobSearch(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 pr-9 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
+              />
+              <svg className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <select
+                value={jobBranch}
+                onChange={(e) => setJobBranch(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+              >
+                <option value="all">كل الفروع</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.nameAr}</option>
+                ))}
+              </select>
+
+              <select
+                value={jobStatus}
+                onChange={(e) => setJobStatus(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+              >
+                <option value="all">كل الحالات والأنواع</option>
+                <option value="open">نشط / مفتوح</option>
+                <option value="closed">مغلق</option>
+                <option value="full_time">دوام كامل</option>
+                <option value="part_time">دوام جزئي</option>
+              </select>
+            </div>
+          </div>
+
+          {filteredJobs.length === 0 ? (
             <div className="p-12 text-center flex flex-col items-center justify-center">
               <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h4 className="text-sm font-extrabold text-slate-900 mb-1">لا توجد وظائف بعد</h4>
-              <p className="text-xs text-slate-400">أضف أول وظيفة لهذه العلامة التجارية لتظهر للمتقدمين.</p>
+              <h4 className="text-sm font-extrabold text-slate-900 mb-1">لا توجد وظائف تفي بحثك</h4>
+              <p className="text-xs text-slate-400">جرب تعديل كلمة البحث أو اختيار فرع / حالة أخرى.</p>
             </div>
           ) : (
             <div className="p-4 sm:p-5 space-y-4 bg-slate-50/50">
-              {jobs.map((job) => {
+              {filteredJobs.map((job) => {
                 const hasResponsibilities = (job.responsibilitiesAr && job.responsibilitiesAr.length > 0) || (job.responsibilitiesEn && job.responsibilitiesEn.length > 0);
                 const hasRequirements = (job.requirementsAr && job.requirementsAr.length > 0) || (job.requirementsEn && job.requirementsEn.length > 0);
                 const hasBenefits = (job.benefitsAr && job.benefitsAr.length > 0) || (job.benefitsEn && job.benefitsEn.length > 0);
@@ -815,13 +1196,12 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-base font-extrabold text-slate-900">{job.titleAr}</h4>
                           {job.titleEn && <span className="text-xs font-semibold text-slate-400" dir="ltr">({job.titleEn})</span>}
-                          
+
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${
-                              job.status === 'open'
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-500 border border-slate-200'
-                            }`}
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${job.status === 'open'
+                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border border-slate-200'
+                              }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${job.status === 'open' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                             {job.status === 'open' ? 'نشط / مفتوح' : 'مغلق'}
@@ -833,14 +1213,14 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                             {job.employmentType === 'full_time'
                               ? 'دوام كامل'
                               : job.employmentType === 'part_time'
-                              ? 'دوام جزئي'
-                              : job.employmentType === 'hourly'
-                              ? 'بالساعة'
-                              : job.employmentType === 'contract'
-                              ? 'عقد مؤقت'
-                              : job.employmentType === 'internship'
-                              ? 'تدريب'
-                              : 'عن بُعد'}
+                                ? 'دوام جزئي'
+                                : job.employmentType === 'hourly'
+                                  ? 'بالساعة'
+                                  : job.employmentType === 'contract'
+                                    ? 'عقد مؤقت'
+                                    : job.employmentType === 'internship'
+                                      ? 'تدريب'
+                                      : 'عن بُعد'}
                           </span>
 
                           {job.workingHoursAr && (
@@ -964,7 +1344,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                             colorStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                             icon = (
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l.399.634-1.156 4.22 4.316-1.131.584.344z"/>
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l.399.634-1.156 4.22 4.316-1.131.584.344z" />
                               </svg>
                             );
                             subDetail = job.contactDetails?.whatsapp || '';
@@ -1003,8 +1383,17 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
       {activeTab === 'menu' && (
         <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
           {/* Menu Header matching Screenshot 2 */}
-          <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
-            <h3 className="text-base font-extrabold text-slate-900">القائمة</h3>
+          <div className="p-4 sm:p-5 flex items-center justify-between gap-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">القائمة</h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                {menuItems.length === 0
+                  ? 'لا توجد عناصر مسجلة في القائمة'
+                  : filteredMenuItems.length > 0
+                    ? `عرض ${filteredMenuItems.length} من إجمالي ${menuItems.length} عنصر`
+                    : 'لا توجد نتائج مطابقة للفلتر'}
+              </p>
+            </div>
             <button
               onClick={onAddMenuItem}
               className="px-4.5 py-2.5 rounded-xl bg-[#10b981] hover:bg-emerald-600 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition flex items-center gap-2 cursor-pointer"
@@ -1016,15 +1405,68 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
             </button>
           </div>
 
-          {menuItems.length === 0 ? (
-            <div className="p-12 text-center flex flex-col items-center justify-center border-t border-slate-100">
+          {/* Menu Filter Bar */}
+          <div className="p-4 bg-slate-50/80 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="بحث في عناصر القائمة..."
+                value={menuSearch}
+                onChange={(e) => setMenuSearch(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 pr-9 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
+              />
+              <svg className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+              <select
+                value={menuBranch}
+                onChange={(e) => setMenuBranch(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+              >
+                <option value="all">كل الفروع</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.nameAr}</option>
+                ))}
+              </select>
+
+              <select
+                value={menuCategory}
+                onChange={(e) => setMenuCategory(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+              >
+                <option value="all">كل الأقسام</option>
+                <option value="وجبات">وجبات</option>
+                <option value="مشروبات">مشروبات</option>
+                <option value="جانبية">جانبية</option>
+                <option value="إضافات">إضافات</option>
+                <option value="توصيل">توصيل</option>
+                <option value="باقات">باقات</option>
+              </select>
+
+              <select
+                value={menuStatus}
+                onChange={(e) => setMenuStatus(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-700 font-bold focus:outline-none focus:border-emerald-500"
+              >
+                <option value="all">كل الحالات</option>
+                <option value="available">متاح</option>
+                <option value="unavailable">غير متاح</option>
+              </select>
+            </div>
+          </div>
+
+          {filteredMenuItems.length === 0 ? (
+            <div className="p-12 text-center flex flex-col items-center justify-center">
               <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
-              <h4 className="text-sm font-extrabold text-slate-900 mb-1">لا توجد عناصر في القائمة بعد</h4>
-              <p className="text-xs text-slate-400">أضف أول عنصر للقائمة لهذه العلامة التجارية.</p>
+              <h4 className="text-sm font-extrabold text-slate-900 mb-1">لا توجد عناصر تفي بحثك</h4>
+              <p className="text-xs text-slate-400">جرب تعديل كلمة البحث أو اختيار فرع / قسم آخر.</p>
             </div>
           ) : (
             <table className="w-full text-right">
@@ -1038,7 +1480,7 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {menuItems.map((item) => (
+                {filteredMenuItems.map((item) => (
                   <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
@@ -1067,11 +1509,10 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
                     </td>
                     <td className="px-5 py-3.5">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${
-                          item.status === 'available'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 w-fit ${item.status === 'available'
+                          ? 'bg-emerald-50 text-emerald-600'
+                          : 'bg-slate-100 text-slate-500'
+                          }`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'available' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                         {item.status === 'available' ? 'متاح' : 'غير متاح'}
@@ -1116,26 +1557,6 @@ export const BrandDetailView: React.FC<BrandDetailViewProps> = ({
           onBack={onBack}
         />
       )}
-
-      {activeTab === 'extraInfo' && (
-        <BrandExtraInfoView
-          initialData={brand.extraInfo}
-          onSave={onSaveExtraInfo}
-        />
-      )}
-
-      {activeTab !== 'overview' &&
-        activeTab !== 'offers' &&
-        activeTab !== 'branches' &&
-        activeTab !== 'contact' &&
-        activeTab !== 'extraInfo' &&
-        activeTab !== 'promoCodes' &&
-        activeTab !== 'jobs' &&
-        activeTab !== 'menu' && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-16 text-center">
-            <p className="text-sm font-bold text-slate-400">لا توجد بيانات متاحة حالياً</p>
-          </div>
-        )}
     </div>
   );
 };

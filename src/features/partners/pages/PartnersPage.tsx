@@ -18,6 +18,23 @@ import { DeleteBrandModal } from '../components/DeleteBrandModal';
 
 import { usePartners } from '../presentation/hooks/usePartners';
 import { brandApiService } from '../data/api/brandApiService';
+import { partnerApiService } from '../data/api/partnerApiService';
+import {
+  MOCK_DEFAULT_BRANCHES,
+  MOCK_DEFAULT_OFFERS,
+  MOCK_DEFAULT_PROMO_CODES,
+  MOCK_DEFAULT_JOBS,
+  MOCK_DEFAULT_MENU_ITEMS,
+} from '../data/mockBrandDetailsData';
+
+const ensureBrandMockData = (b: Brand): Brand => ({
+  ...b,
+  branches: b.branches && b.branches.length > 0 ? b.branches : MOCK_DEFAULT_BRANCHES.map((br) => ({ ...br, brandId: b.id })),
+  offers: b.offers && b.offers.length > 0 ? b.offers : MOCK_DEFAULT_OFFERS.map((o) => ({ ...o, brandId: b.id })),
+  promoCodes: b.promoCodes && b.promoCodes.length > 0 ? b.promoCodes : MOCK_DEFAULT_PROMO_CODES.map((p) => ({ ...p, brandId: b.id })),
+  jobs: b.jobs && b.jobs.length > 0 ? b.jobs : MOCK_DEFAULT_JOBS.map((j) => ({ ...j, brandId: b.id })),
+  menuItems: b.menuItems && b.menuItems.length > 0 ? b.menuItems : MOCK_DEFAULT_MENU_ITEMS.map((m) => ({ ...m, brandId: b.id })),
+});
 
 export const PartnersPage: React.FC = () => {
   const {
@@ -46,19 +63,40 @@ export const PartnersPage: React.FC = () => {
 
   // Active View State (List View vs Detail Brands View)
   const [selectedPartnerForBrands, setSelectedPartnerForBrands] = useState<Partner | null>(null);
+  const [isFetchingPartnerDetail, setIsFetchingPartnerDetail] = useState(false);
 
   useEffect(() => {
     if (!selectedPartnerForBrands?.id) return;
-    brandApiService
-      .fetchBrandsByPartnerId(selectedPartnerForBrands.id)
-      .then((fetchedBrands) => {
-        setSelectedPartnerForBrands((prev) => (prev ? { ...prev, brands: fetchedBrands, brandsCount: fetchedBrands.length } : null));
-        setLocalPartners((prev) =>
-          prev.map((p) => (p.id === selectedPartnerForBrands.id ? { ...p, brands: fetchedBrands, brandsCount: fetchedBrands.length } : p))
+    const partnerId = selectedPartnerForBrands.id;
+    setIsFetchingPartnerDetail(true);
+    partnerApiService
+      .fetchPartnerById(partnerId)
+      .then((partnerDetail) => {
+        const fetchedBrands = partnerDetail.brands || [];
+        const updatedPartner = {
+          ...partnerDetail,
+          brands: fetchedBrands,
+          brandsCount: fetchedBrands.length,
+        };
+
+        setSelectedPartnerForBrands((prev) =>
+          prev && prev.id === partnerId ? { ...prev, ...updatedPartner } : prev
         );
+        setLocalPartners((prev) =>
+          prev.map((p) => (p.id === partnerId ? { ...p, ...updatedPartner } : p))
+        );
+
+        setActiveBrandForOffers((prevActive) => {
+          if (!prevActive) return null;
+          const matching = fetchedBrands.find((b) => b.id === prevActive.id);
+          return matching || prevActive;
+        });
       })
-      .catch(() => {
-        // keep local state if fetch fails
+      .catch((err) => {
+        console.error('Failed to fetch partner details:', err);
+      })
+      .finally(() => {
+        setIsFetchingPartnerDetail(false);
       });
   }, [selectedPartnerForBrands?.id]);
 
@@ -133,6 +171,38 @@ export const PartnersPage: React.FC = () => {
     }
   };
 
+  // Helper to update active brand across state
+  const updateActiveBrand = (updater: (prevBrand: Brand) => Brand) => {
+    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
+
+    const nextBrand = updater(activeBrandForOffers);
+    setActiveBrandForOffers(nextBrand);
+
+    setSelectedPartnerForBrands((prevPartner) => {
+      if (!prevPartner) return null;
+      const updatedBrands = (prevPartner.brands || []).map((b) =>
+        b.id === nextBrand.id ? nextBrand : b
+      );
+      return {
+        ...prevPartner,
+        brands: updatedBrands,
+      };
+    });
+
+    setLocalPartners((prevPartners) =>
+      prevPartners.map((p) => {
+        if (p.id !== selectedPartnerForBrands.id) return p;
+        const updatedBrands = (p.brands || []).map((b) =>
+          b.id === nextBrand.id ? nextBrand : b
+        );
+        return {
+          ...p,
+          brands: updatedBrands,
+        };
+      })
+    );
+  };
+
   // Brand Operations
   const handleSaveBrand = async (brandData: Partial<Brand>) => {
     if (!selectedPartnerForBrands) return;
@@ -151,6 +221,21 @@ export const PartnersPage: React.FC = () => {
         });
       }
 
+      setSelectedPartnerForBrands((prev) => {
+        if (!prev) return null;
+        let currentBrands = [...(prev.brands || [])];
+        if (editingBrand) {
+          currentBrands = currentBrands.map((b) => (b.id === editingBrand.id ? savedBrand : b));
+        } else {
+          currentBrands.unshift(savedBrand);
+        }
+        return {
+          ...prev,
+          brands: currentBrands,
+          brandsCount: currentBrands.length,
+        };
+      });
+
       setLocalPartners((prev) =>
         prev.map((p) => {
           if (p.id !== selectedPartnerForBrands.id) return p;
@@ -162,15 +247,18 @@ export const PartnersPage: React.FC = () => {
             currentBrands.unshift(savedBrand);
           }
 
-          const updatedPartner = {
+          return {
             ...p,
             brands: currentBrands,
             brandsCount: currentBrands.length,
           };
-          setSelectedPartnerForBrands(updatedPartner);
-          return updatedPartner;
         })
       );
+
+      if (activeBrandForOffers && (editingBrand?.id === activeBrandForOffers.id || activeBrandForOffers.id === savedBrand.id)) {
+        setActiveBrandForOffers(savedBrand);
+      }
+
       setIsAddEditBrandOpen(false);
       setEditingBrand(null);
     } catch (err: any) {
@@ -188,19 +276,28 @@ export const PartnersPage: React.FC = () => {
 
     try {
       await brandApiService.deleteBrand(brandToDelete.id);
+      setSelectedPartnerForBrands((prev) => {
+        if (!prev) return null;
+        const updatedBrands = (prev.brands || []).filter((b) => b.id !== brandToDelete.id);
+        return {
+          ...prev,
+          brands: updatedBrands,
+          brandsCount: updatedBrands.length,
+        };
+      });
+
       setLocalPartners((prev) =>
         prev.map((p) => {
           if (p.id !== selectedPartnerForBrands.id) return p;
           const updatedBrands = (p.brands || []).filter((b) => b.id !== brandToDelete.id);
-          const updatedPartner = {
+          return {
             ...p,
             brands: updatedBrands,
             brandsCount: updatedBrands.length,
           };
-          setSelectedPartnerForBrands(updatedPartner);
-          return updatedPartner;
         })
       );
+
       if (activeBrandForOffers?.id === brandToDelete.id) {
         setActiveBrandForOffers(null);
       }
@@ -213,561 +310,277 @@ export const PartnersPage: React.FC = () => {
   };
 
   // Toggle Brand Status (from detail view)
-  const handleToggleBrandStatus = (brand: Brand) => {
+  const handleToggleBrandStatus = async (brand: Brand) => {
     if (!selectedPartnerForBrands) return;
     const newStatus: BrandStatus = brand.status === 'active' ? 'inactive' : 'active';
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-        const updatedBrands = (p.brands || []).map((b) =>
-          b.id === brand.id ? { ...b, status: newStatus } : b
+    try {
+      const updatedBrand = await brandApiService.updateBrand(brand.id, {
+        status: newStatus,
+        partnerId: selectedPartnerForBrands.id,
+      });
+
+      setSelectedPartnerForBrands((prev) => {
+        if (!prev) return null;
+        const updatedBrands = (prev.brands || []).map((b) =>
+          b.id === brand.id ? updatedBrand : b
         );
-        const updatedPartner = { ...p, brands: updatedBrands };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
-    setActiveBrandForOffers((prev) => (prev ? { ...prev, status: newStatus } : prev));
+        return { ...prev, brands: updatedBrands };
+      });
+
+      setLocalPartners((prev) =>
+        prev.map((p) => {
+          if (p.id !== selectedPartnerForBrands.id) return p;
+          const updatedBrands = (p.brands || []).map((b) =>
+            b.id === brand.id ? updatedBrand : b
+          );
+          return { ...p, brands: updatedBrands };
+        })
+      );
+
+      if (activeBrandForOffers?.id === brand.id) {
+        setActiveBrandForOffers(updatedBrand);
+      }
+    } catch (err: any) {
+      alert(err?.message || 'فشل تغيير حالة العلامة التجارية');
+    }
   };
 
   // Update Brand Extra Info
   const handleUpdateBrandExtraInfo = (extraInfo: BrandExtraInfo) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    const updatedBrand = { ...activeBrandForOffers, extraInfo };
-    setActiveBrandForOffers(updatedBrand);
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const currentBrands = (p.brands || []).map((b) =>
-          b.id === activeBrandForOffers.id ? updatedBrand : b
-        );
-
-        const updatedPartner = {
-          ...p,
-          brands: currentBrands,
-        };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
+    updateActiveBrand((brand) => ({ ...brand, extraInfo }));
   };
 
   // Offer Operations
   const handleSaveOffer = (offerData: Partial<Offer>) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-
-          let currentOffers = [...(b.offers || [])];
-          if (editingOffer) {
-            currentOffers = currentOffers.map((o) =>
-              o.id === editingOffer.id ? { ...o, ...offerData } : o
-            );
-          } else {
-            const newOffer: Offer = {
-              id: `offer-${Date.now()}`,
-              brandId: b.id,
-              titleAr: offerData.titleAr || 'عرض جديد',
-              titleEn: offerData.titleEn || 'New Offer',
-              descriptionAr: offerData.descriptionAr,
-              descriptionEn: offerData.descriptionEn,
-              imageUrl: offerData.imageUrl,
-              branchIds: offerData.branchIds,
-              startDate: offerData.startDate || new Date().toISOString().split('T')[0],
-              endDate: offerData.endDate || '',
-              status: offerData.status || 'active',
-            };
-            currentOffers.push(newOffer);
-          }
-
-          const updatedBrand = {
-            ...b,
-            offers: currentOffers,
-            offersCount: currentOffers.length,
-          };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = {
-          ...p,
-          brands: updatedBrands,
+    updateActiveBrand((brand) => {
+      let currentOffers = [...(brand.offers || [])];
+      if (editingOffer) {
+        currentOffers = currentOffers.map((o) =>
+          o.id === editingOffer.id ? { ...o, ...offerData } : o
+        );
+      } else {
+        const newOffer: Offer = {
+          id: `offer-${Date.now()}`,
+          brandId: brand.id,
+          titleAr: offerData.titleAr || 'عرض جديد',
+          titleEn: offerData.titleEn || 'New Offer',
+          descriptionAr: offerData.descriptionAr,
+          descriptionEn: offerData.descriptionEn,
+          imageUrl: offerData.imageUrl,
+          branchIds: offerData.branchIds,
+          publishingScope: offerData.publishingScope,
+          startDate: offerData.startDate,
+          endDate: offerData.endDate,
+          status: offerData.status || 'active',
+          contactMethods: offerData.contactMethods,
+          contactDetails: offerData.contactDetails,
         };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
+        currentOffers.push(newOffer);
+      }
+      return {
+        ...brand,
+        offers: currentOffers,
+        offersCount: currentOffers.length,
+      };
+    });
   };
 
   // Delete Offer
   const handleDeleteOffer = (offerId: string) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-
-          const updatedOffers = (b.offers || []).filter((o) => o.id !== offerId);
-          const updatedBrand = {
-            ...b,
-            offers: updatedOffers,
-            offersCount: updatedOffers.length,
-          };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = {
-          ...p,
-          brands: updatedBrands,
-        };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
+    updateActiveBrand((brand) => {
+      const updatedOffers = (brand.offers || []).filter((o) => o.id !== offerId);
+      return {
+        ...brand,
+        offers: updatedOffers,
+        offersCount: updatedOffers.length,
+      };
+    });
   };
 
   // Branch Operations
-  const updateActiveBrandBranches = (updater: (branches: Branch[]) => Branch[]) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-          const updatedBrand = { ...b, branches: updater(b.branches || []) };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = { ...p, brands: updatedBrands };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
-  };
-
   const handleSaveBranch = (branchData: Partial<Branch>) => {
-    if (!activeBrandForOffers) return;
-
-    if (editingBranch) {
-      updateActiveBrandBranches((branches) =>
-        branches.map((b) => {
+    updateActiveBrand((brand) => {
+      let currentBranches = [...(brand.branches || [])];
+      if (editingBranch) {
+        currentBranches = currentBranches.map((b) => {
           if (b.id === editingBranch.id) {
             return { ...b, ...branchData };
           }
           return branchData.isMainBranch ? { ...b, isMainBranch: false } : b;
-        })
-      );
-    } else {
-      const newBranch: Branch = {
-        id: `branch-${Date.now()}`,
-        brandId: activeBrandForOffers.id,
-        nameAr: branchData.nameAr || 'فرع جديد',
-        nameEn: branchData.nameEn || branchData.nameAr || 'New Branch',
-        address: branchData.address || '',
-        phone: branchData.phone || '',
-        mapUrl: branchData.mapUrl,
-        status: branchData.status || 'active',
-        isMainBranch: branchData.isMainBranch || false,
-      };
-      updateActiveBrandBranches((branches) => {
+        });
+      } else {
+        const newBranch: Branch = {
+          id: `branch-${Date.now()}`,
+          brandId: brand.id,
+          nameAr: branchData.nameAr || 'فرع جديد',
+          nameEn: branchData.nameEn || branchData.nameAr || 'New Branch',
+          address: branchData.address || '',
+          phone: branchData.phone || '',
+          mapUrl: branchData.mapUrl,
+          status: branchData.status || 'active',
+          isMainBranch: branchData.isMainBranch || false,
+        };
         if (branchData.isMainBranch) {
-          return [...branches.map((b) => ({ ...b, isMainBranch: false })), newBranch];
+          currentBranches = [...currentBranches.map((b) => ({ ...b, isMainBranch: false })), newBranch];
+        } else {
+          currentBranches = [...currentBranches, newBranch];
         }
-        return [...branches, newBranch];
-      });
-    }
+      }
+      return {
+        ...brand,
+        branches: currentBranches,
+      };
+    });
   };
 
   const handleDeleteBranch = (branchId: string) => {
-    updateActiveBrandBranches((branches) => branches.filter((b) => b.id !== branchId));
-  };
-
-  // Promo Code Operations
-  const handleSavePromoCode = (promoData: Partial<PromoCode>) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-
-          let currentPromoCodes = [...(b.promoCodes || [])];
-          if (currentPromoCodes.length === 0) {
-            currentPromoCodes = [
-              {
-                id: 'promo-1',
-                brandId: b.id,
-                code: 'SAVE20',
-                titleAr: 'خصم 20% للعملاء الجدد',
-                usageLocation: 'store_and_website',
-                status: 'active',
-                publishingScope: 'all_branches',
-              },
-              {
-                id: 'promo-2',
-                brandId: b.id,
-                code: 'FIRST50',
-                titleAr: 'خصم الاشتراك الأول',
-                usageLocation: 'website',
-                status: 'inactive',
-                publishingScope: 'all_branches',
-              },
-            ];
-          }
-
-          if (editingPromoCode) {
-            currentPromoCodes = currentPromoCodes.map((pc) =>
-              pc.id === editingPromoCode.id ? { ...pc, ...promoData } : pc
-            );
-          } else {
-            const newPromoCode: PromoCode = {
-              id: `promo-${Date.now()}`,
-              brandId: b.id,
-              code: promoData.code || 'SAVE20',
-              titleAr: promoData.titleAr || 'خصم جديد',
-              titleEn: promoData.titleEn,
-              descriptionAr: promoData.descriptionAr,
-              descriptionEn: promoData.descriptionEn,
-              termsAr: promoData.termsAr,
-              termsEn: promoData.termsEn,
-              usageLocation: promoData.usageLocation || 'store_and_website',
-              status: promoData.status || 'active',
-              publishingScope: promoData.publishingScope || 'all_branches',
-              branchId: promoData.branchId,
-            };
-            currentPromoCodes.push(newPromoCode);
-          }
-
-          const updatedBrand = { ...b, promoCodes: currentPromoCodes };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = { ...p, brands: updatedBrands };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
-  };
-
-  const handleDeletePromoCode = (promoCodeId: string) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-
-          let currentPromoCodes = b.promoCodes && b.promoCodes.length > 0 ? b.promoCodes : [
-            {
-              id: 'promo-1',
-              brandId: b.id,
-              code: 'SAVE20',
-              titleAr: 'خصم 20% للعملاء الجدد',
-              usageLocation: 'store_and_website' as const,
-              status: 'active' as const,
-              publishingScope: 'all_branches' as const,
-            },
-            {
-              id: 'promo-2',
-              brandId: b.id,
-              code: 'FIRST50',
-              titleAr: 'خصم الاشتراك الأول',
-              usageLocation: 'website' as const,
-              status: 'inactive' as const,
-              publishingScope: 'all_branches' as const,
-            },
-          ];
-
-          currentPromoCodes = currentPromoCodes.filter((pc) => pc.id !== promoCodeId);
-          const updatedBrand = { ...b, promoCodes: currentPromoCodes };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = { ...p, brands: updatedBrands };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
-  };
-
-  // Job Operations
-  const handleSaveJob = (jobData: Partial<JobPosition>) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-
-          let currentJobs = [...(b.jobs || [])];
-          if (currentJobs.length === 0) {
-            currentJobs = [
-              {
-                id: 'job-1',
-                brandId: b.id,
-                titleAr: 'مندوب مبيعات',
-                employmentType: 'full_time',
-                contactMethods: ['phone'],
-                status: 'open',
-                publishingScope: 'all_branches',
-              },
-              {
-                id: 'job-2',
-                brandId: b.id,
-                titleAr: 'مشرف عمليات',
-                employmentType: 'part_time',
-                contactMethods: ['phone'],
-                status: 'closed',
-                publishingScope: 'all_branches',
-              },
-            ];
-          }
-
-          if (editingJob) {
-            currentJobs = currentJobs.map((j) =>
-              j.id === editingJob.id ? { ...j, ...jobData } : j
-            );
-          } else {
-            const newJob: JobPosition = {
-              id: `job-${Date.now()}`,
-              brandId: b.id,
-              titleAr: jobData.titleAr || 'وظيفة جديدة',
-              titleEn: jobData.titleEn,
-              descriptionAr: jobData.descriptionAr,
-              descriptionEn: jobData.descriptionEn,
-              employmentType: jobData.employmentType || 'full_time',
-              contactMethods: jobData.contactMethods || ['phone'],
-              status: jobData.status || 'open',
-              publishingScope: jobData.publishingScope || 'all_branches',
-              branchIds: jobData.branchIds,
-            };
-            currentJobs.push(newJob);
-          }
-
-          const updatedBrand = { ...b, jobs: currentJobs };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = { ...p, brands: updatedBrands };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
-  };
-
-  const handleDeleteJob = (jobId: string) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-
-          let currentJobs = b.jobs && b.jobs.length > 0 ? b.jobs : [
-            {
-              id: 'job-1',
-              brandId: b.id,
-              titleAr: 'مندوب مبيعات',
-              employmentType: 'full_time' as const,
-              contactMethods: ['phone' as const],
-              status: 'open' as const,
-              publishingScope: 'all_branches' as const,
-            },
-            {
-              id: 'job-2',
-              brandId: b.id,
-              titleAr: 'مشرف عمليات',
-              employmentType: 'part_time' as const,
-              contactMethods: ['phone' as const],
-              status: 'closed' as const,
-              publishingScope: 'all_branches' as const,
-            },
-          ];
-
-          currentJobs = currentJobs.filter((j) => j.id !== jobId);
-          const updatedBrand = { ...b, jobs: currentJobs };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = { ...p, brands: updatedBrands };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
-  };
-
-  // Menu Item Operations
-  const handleSaveMenuItem = (itemData: Partial<MenuItem>) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-
-          let currentMenuItems = [...(b.menuItems || [])];
-          if (currentMenuItems.length === 0) {
-            currentMenuItems = [
-              {
-                id: 'menu-1',
-                brandId: b.id,
-                nameAr: 'خدمة التوصيل السريع',
-                category: 'توصيل',
-                price: 25,
-                unitType: 'count',
-                status: 'available',
-                publishingScope: 'all_branches',
-              },
-              {
-                id: 'menu-2',
-                brandId: b.id,
-                nameAr: 'باقة التوصيل الشهرية',
-                category: 'باقات',
-                price: 199,
-                unitType: 'quantity',
-                status: 'available',
-                publishingScope: 'all_branches',
-              },
-              {
-                id: 'menu-3',
-                brandId: b.id,
-                nameAr: 'توصيل دولي',
-                category: 'توصيل',
-                price: 150,
-                unitType: 'count',
-                status: 'unavailable',
-                publishingScope: 'all_branches',
-              },
-            ];
-          }
-
-          if (editingMenuItem) {
-            currentMenuItems = currentMenuItems.map((mi) =>
-              mi.id === editingMenuItem.id ? { ...mi, ...itemData } : mi
-            );
-          } else {
-            const newMenuItem: MenuItem = {
-              id: `menu-${Date.now()}`,
-              brandId: b.id,
-              nameAr: itemData.nameAr || 'عنصر جديد',
-              nameEn: itemData.nameEn,
-              category: itemData.category || 'توصيل',
-              price: itemData.price || 0,
-              imageUrl: itemData.imageUrl,
-              unitType: itemData.unitType || 'count',
-              status: itemData.status || 'available',
-              publishingScope: itemData.publishingScope || 'all_branches',
-              branchId: itemData.branchId,
-            };
-            currentMenuItems.push(newMenuItem);
-          }
-
-          const updatedBrand = { ...b, menuItems: currentMenuItems };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = { ...p, brands: updatedBrands };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
-  };
-
-  const handleDeleteMenuItem = (itemId: string) => {
-    if (!selectedPartnerForBrands || !activeBrandForOffers) return;
-
-    setLocalPartners((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedPartnerForBrands.id) return p;
-
-        const updatedBrands = (p.brands || []).map((b) => {
-          if (b.id !== activeBrandForOffers.id) return b;
-
-          let currentMenuItems = b.menuItems && b.menuItems.length > 0 ? b.menuItems : [
-            {
-              id: 'menu-1',
-              brandId: b.id,
-              nameAr: 'خدمة التوصيل السريع',
-              category: 'توصيل',
-              price: 25,
-              unitType: 'count' as const,
-              status: 'available' as const,
-              publishingScope: 'all_branches' as const,
-            },
-            {
-              id: 'menu-2',
-              brandId: b.id,
-              nameAr: 'باقة التوصيل الشهرية',
-              category: 'باقات',
-              price: 199,
-              unitType: 'quantity' as const,
-              status: 'available' as const,
-              publishingScope: 'all_branches' as const,
-            },
-            {
-              id: 'menu-3',
-              brandId: b.id,
-              nameAr: 'توصيل دولي',
-              category: 'توصيل',
-              price: 150,
-              unitType: 'count' as const,
-              status: 'unavailable' as const,
-              publishingScope: 'all_branches' as const,
-            },
-          ];
-
-          const updatedMenuItems = currentMenuItems.filter((mi) => mi.id !== itemId);
-          const updatedBrand = { ...b, menuItems: updatedMenuItems };
-          setActiveBrandForOffers(updatedBrand);
-          return updatedBrand;
-        });
-
-        const updatedPartner = { ...p, brands: updatedBrands };
-        setSelectedPartnerForBrands(updatedPartner);
-        return updatedPartner;
-      })
-    );
+    updateActiveBrand((brand) => ({
+      ...brand,
+      branches: (brand.branches || []).filter((b) => b.id !== branchId),
+    }));
   };
 
   const handleToggleBranchStatus = (branch: Branch) => {
     const newStatus: BranchStatus = branch.status === 'active' ? 'inactive' : 'active';
-    updateActiveBrandBranches((branches) =>
-      branches.map((b) => (b.id === branch.id ? { ...b, status: newStatus } : b))
-    );
+    updateActiveBrand((brand) => ({
+      ...brand,
+      branches: (brand.branches || []).map((b) =>
+        b.id === branch.id ? { ...b, status: newStatus } : b
+      ),
+    }));
+  };
+
+  // Promo Code Operations
+  const handleSavePromoCode = (promoData: Partial<PromoCode>) => {
+    updateActiveBrand((brand) => {
+      let currentPromoCodes = [...(brand.promoCodes || [])];
+      if (editingPromoCode) {
+        currentPromoCodes = currentPromoCodes.map((pc) =>
+          pc.id === editingPromoCode.id ? { ...pc, ...promoData } : pc
+        );
+      } else {
+        const newPromoCode: PromoCode = {
+          id: `promo-${Date.now()}`,
+          brandId: brand.id,
+          code: promoData.code || 'SAVE20',
+          titleAr: promoData.titleAr || 'خصم جديد',
+          titleEn: promoData.titleEn,
+          descriptionAr: promoData.descriptionAr,
+          descriptionEn: promoData.descriptionEn,
+          termsAr: promoData.termsAr,
+          termsEn: promoData.termsEn,
+          usageLocation: promoData.usageLocation || 'store_and_website',
+          startDate: promoData.startDate,
+          endDate: promoData.endDate,
+          status: promoData.status || 'active',
+          publishingScope: promoData.publishingScope || 'all_branches',
+          branchId: promoData.branchId,
+        };
+        currentPromoCodes.push(newPromoCode);
+      }
+      return { ...brand, promoCodes: currentPromoCodes };
+    });
+  };
+
+  const handleDeletePromoCode = (promoCodeId: string) => {
+    updateActiveBrand((brand) => ({
+      ...brand,
+      promoCodes: (brand.promoCodes || []).filter((pc) => pc.id !== promoCodeId),
+    }));
+  };
+
+  // Job Operations
+  const handleSaveJob = (jobData: Partial<JobPosition>) => {
+    updateActiveBrand((brand) => {
+      let currentJobs = [...(brand.jobs || [])];
+      if (editingJob) {
+        currentJobs = currentJobs.map((j) =>
+          j.id === editingJob.id ? { ...j, ...jobData } : j
+        );
+      } else {
+        const newJob: JobPosition = {
+          id: `job-${Date.now()}`,
+          brandId: brand.id,
+          titleAr: jobData.titleAr || 'وظيفة جديدة',
+          titleEn: jobData.titleEn,
+          descriptionAr: jobData.descriptionAr,
+          descriptionEn: jobData.descriptionEn,
+          employmentType: jobData.employmentType || 'full_time',
+          contactMethods: jobData.contactMethods || ['phone'],
+          status: jobData.status || 'open',
+          publishingScope: jobData.publishingScope || 'all_branches',
+          branchIds: jobData.branchIds,
+        };
+        currentJobs.push(newJob);
+      }
+      return { ...brand, jobs: currentJobs };
+    });
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    updateActiveBrand((brand) => ({
+      ...brand,
+      jobs: (brand.jobs || []).filter((j) => j.id !== jobId),
+    }));
+  };
+
+  // Menu Item Operations
+  const handleSaveMenuItem = (itemData: Partial<MenuItem>) => {
+    updateActiveBrand((brand) => {
+      let currentMenuItems = [...(brand.menuItems || [])];
+      if (editingMenuItem) {
+        currentMenuItems = currentMenuItems.map((mi) =>
+          mi.id === editingMenuItem.id ? { ...mi, ...itemData } : mi
+        );
+      } else {
+        const newMenuItem: MenuItem = {
+          id: `menu-${Date.now()}`,
+          brandId: brand.id,
+          nameAr: itemData.nameAr || 'عنصر جديد',
+          nameEn: itemData.nameEn,
+          category: itemData.category || 'توصيل',
+          categoryEn: itemData.categoryEn,
+          descriptionAr: itemData.descriptionAr,
+          descriptionEn: itemData.descriptionEn,
+          price: itemData.price || 0,
+          imageUrl: itemData.imageUrl,
+          unitType: itemData.unitType || 'count',
+          status: itemData.status || 'available',
+          publishingScope: itemData.publishingScope || 'all_branches',
+          branchId: itemData.branchId,
+          branchIds: itemData.branchIds,
+        };
+        currentMenuItems.push(newMenuItem);
+      }
+      return { ...brand, menuItems: currentMenuItems };
+    });
+  };
+
+  const handleDeleteMenuItem = (itemId: string) => {
+    updateActiveBrand((brand) => ({
+      ...brand,
+      menuItems: (brand.menuItems || []).filter((mi) => mi.id !== itemId),
+    }));
   };
 
   // If a partner is selected for brands detail view:
   if (selectedPartnerForBrands) {
+    if (isFetchingPartnerDetail) {
+      return (
+        <div className="space-y-6 animate-fadeIn" dir="rtl">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-16 flex flex-col items-center justify-center text-center shadow-sm">
+            <div className="w-12 h-12 border-4 border-slate-200 border-t-[#d83f2a] rounded-full animate-spin mb-4" />
+            <h3 className="text-base font-extrabold text-slate-900 mb-1">
+              جاري تحميل بيانات الشريك والعلامات التجارية...
+            </h3>
+            <p className="text-xs text-slate-400 font-medium">
+              يتم استدعاء الـ API لجلب التفاصيل الخاصة بـ <span className="font-bold text-slate-700">{selectedPartnerForBrands.nameAr}</span>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6">
         {activeBrandForOffers ? (
@@ -775,6 +588,10 @@ export const PartnersPage: React.FC = () => {
             brand={activeBrandForOffers}
             partnerName={selectedPartnerForBrands.nameAr}
             onBack={() => setActiveBrandForOffers(null)}
+            onBackToPartnersList={() => {
+              setActiveBrandForOffers(null);
+              setSelectedPartnerForBrands(null);
+            }}
             onEditBrand={() => {
               setEditingBrand(activeBrandForOffers);
               setIsAddEditBrandOpen(true);
@@ -842,7 +659,7 @@ export const PartnersPage: React.FC = () => {
               setIsAddEditBrandOpen(true);
             }}
             onManageBrandOffers={(brand) => {
-              setActiveBrandForOffers(brand);
+              setActiveBrandForOffers(ensureBrandMockData(brand));
             }}
             onDeleteBrand={handleDeleteBrand}
           />
@@ -989,7 +806,7 @@ export const PartnersPage: React.FC = () => {
             onManageOffers={(partner) => {
               setSelectedPartnerForBrands(partner);
               if (partner.brands && partner.brands.length > 0) {
-                setActiveBrandForOffers(partner.brands[0]);
+                setActiveBrandForOffers(ensureBrandMockData(partner.brands[0]));
               }
             }}
             onDeletePartner={(partner) => setPartnerToDelete(partner)}

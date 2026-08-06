@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Branch, Offer, OfferStatus } from '../types/partner.types';
+import type { Branch, Offer, OfferStatus, OfferContactMethod } from '../types/partner.types';
 
 interface AddEditOfferModalProps {
   isOpen: boolean;
@@ -9,6 +9,41 @@ interface AddEditOfferModalProps {
   editingOffer?: Offer | null;
   branches?: Branch[];
 }
+
+const OFFER_CONTACT_METHODS: {
+  id: OfferContactMethod;
+  label: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    id: 'phone',
+    label: 'اتصال هاتفي',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'whatsapp',
+    label: 'واتساب',
+    icon: (
+      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l.399.634-1.156 4.22 4.316-1.131.584.344z"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'map',
+    label: 'موقع / خريطة',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+];
 
 export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
   isOpen,
@@ -24,11 +59,16 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
   const [descriptionAr, setDescriptionAr] = useState('');
   const [descriptionEn, setDescriptionEn] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<OfferStatus>('active');
   const [publishScope, setPublishScope] = useState<'all' | 'specific'>('all');
   const [branchIds, setBranchIds] = useState<string[]>([]);
+
+  // Contact Methods
+  const [contactMethods, setContactMethods] = useState<OfferContactMethod[]>(['phone']);
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactWhatsapp, setContactWhatsapp] = useState('');
+  const [contactMapUrl, setContactMapUrl] = useState('');
+
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,27 +78,41 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
       setDescriptionAr(editingOffer.descriptionAr || '');
       setDescriptionEn(editingOffer.descriptionEn || '');
       setImageUrl(editingOffer.imageUrl || '');
-      setStartDate(editingOffer.startDate || '');
-      setEndDate(editingOffer.endDate || '');
       setStatus(editingOffer.status || 'active');
       setBranchIds(editingOffer.branchIds || []);
       setPublishScope(editingOffer.branchIds && editingOffer.branchIds.length > 0 ? 'specific' : 'all');
+      setContactMethods(editingOffer.contactMethods && editingOffer.contactMethods.length > 0 ? editingOffer.contactMethods : ['phone']);
+      setContactPhone(editingOffer.contactDetails?.phone || '');
+      setContactWhatsapp(editingOffer.contactDetails?.whatsapp || '');
+      setContactMapUrl(editingOffer.contactDetails?.mapUrl || '');
     } else {
       setTitleAr('');
       setTitleEn('');
       setDescriptionAr('');
       setDescriptionEn('');
       setImageUrl('');
-      setStartDate('');
-      setEndDate('');
       setStatus('active');
       setPublishScope('all');
       setBranchIds([]);
+      setContactMethods(['phone']);
+      setContactPhone('');
+      setContactWhatsapp('');
+      setContactMapUrl('');
     }
     setLangTab('ar');
   }, [editingOffer, isOpen]);
 
   if (!isOpen) return null;
+
+  const handleToggleContactMethod = (method: OfferContactMethod) => {
+    setContactMethods((prev) =>
+      prev.includes(method)
+        ? prev.length > 1
+          ? prev.filter((m) => m !== method)
+          : prev
+        : [...prev, method]
+    );
+  };
 
   const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,7 +128,6 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!titleAr.trim() && !titleEn.trim()) return;
-    if (!startDate || !endDate) return;
 
     onSave({
       titleAr: titleAr || titleEn,
@@ -82,10 +135,15 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
       descriptionAr,
       descriptionEn,
       imageUrl: imageUrl || undefined,
-      startDate,
-      endDate,
       status,
       branchIds: publishScope === 'specific' ? branchIds : [],
+      publishingScope: publishScope === 'specific' ? 'specific_branch' : 'all_branches',
+      contactMethods,
+      contactDetails: {
+        phone: contactMethods.includes('phone') ? contactPhone : undefined,
+        whatsapp: contactMethods.includes('whatsapp') ? contactWhatsapp : undefined,
+        mapUrl: contactMethods.includes('map') ? contactMapUrl : undefined,
+      },
     });
     onClose();
   };
@@ -117,7 +175,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
             type="button"
             onClick={() => setLangTab('ar')}
             className={`pb-2 text-xs font-bold border-b-2 transition cursor-pointer ${
-              langTab === 'ar' ? 'text-red-600 border-red-600' : 'text-slate-500 border-transparent'
+              langTab === 'ar' ? 'text-[#d83f2a] border-[#d83f2a]' : 'text-slate-500 border-transparent'
             }`}
           >
             العربية
@@ -126,7 +184,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
             type="button"
             onClick={() => setLangTab('en')}
             className={`pb-2 text-xs font-bold border-b-2 transition cursor-pointer ${
-              langTab === 'en' ? 'text-red-600 border-red-600' : 'text-slate-500 border-transparent'
+              langTab === 'en' ? 'text-[#d83f2a] border-[#d83f2a]' : 'text-slate-500 border-transparent'
             }`}
           >
             English
@@ -148,7 +206,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
               type="button"
               onClick={() => imageInputRef.current?.click()}
               title="اختر صورة من جهازك"
-              className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 hover:border-red-400 hover:text-red-500 flex flex-col items-center justify-center text-slate-400 shrink-0 overflow-hidden gap-1 transition cursor-pointer"
+              className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 hover:border-[#d83f2a] hover:text-[#d83f2a] flex flex-col items-center justify-center text-slate-400 shrink-0 overflow-hidden gap-1 transition cursor-pointer"
             >
               {imageUrl ? (
                 <img src={imageUrl} alt="Offer" className="w-full h-full object-cover" />
@@ -169,7 +227,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 placeholder="https://example.com/image.jpg"
-                className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium text-left focus:outline-none focus:border-red-500 transition"
+                className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium text-left focus:outline-none focus:border-[#d83f2a] transition"
               />
               <p className="text-[11px] text-slate-400">الصورة ستظهر للمستخدمين في العرض</p>
             </div>
@@ -180,7 +238,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
             <>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  <span className="text-red-500">*</span> عنوان العرض
+                  <span className="text-[#d83f2a]">*</span> عنوان العرض
                 </label>
                 <input
                   type="text"
@@ -188,7 +246,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
                   value={titleAr}
                   onChange={(e) => setTitleAr(e.target.value)}
                   placeholder="عنوان العرض بالعربية"
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 transition"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:border-[#d83f2a] transition"
                 />
               </div>
               <div>
@@ -198,7 +256,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
                   value={descriptionAr}
                   onChange={(e) => setDescriptionAr(e.target.value)}
                   placeholder="اكتب تفاصيل العرض بالعربية..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 transition resize-none"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:border-[#d83f2a] transition resize-none"
                 />
               </div>
             </>
@@ -206,7 +264,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
             <>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  <span className="text-red-500">*</span> Offer Title
+                  <span className="text-[#d83f2a]">*</span> Offer Title
                 </label>
                 <input
                   type="text"
@@ -215,7 +273,7 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
                   value={titleEn}
                   onChange={(e) => setTitleEn(e.target.value)}
                   placeholder="Offer title in English"
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium text-left focus:outline-none focus:border-red-500 transition"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium text-left focus:outline-none focus:border-[#d83f2a] transition"
                 />
               </div>
               <div>
@@ -226,42 +284,100 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
                   value={descriptionEn}
                   onChange={(e) => setDescriptionEn(e.target.value)}
                   placeholder="Write the offer details in English..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium text-left focus:outline-none focus:border-red-500 transition resize-none"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium text-left focus:outline-none focus:border-[#d83f2a] transition resize-none"
                 />
               </div>
             </>
           )}
 
-          {/* Extra Info */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-extrabold text-slate-900">معلومات إضافية</h4>
+          {/* Contact Methods Section */}
+          <div className="pt-3 border-t border-slate-100 space-y-4">
+            <h4 className="text-xs font-extrabold text-slate-400">معلومات التواصل المتاحة للعملاء</h4>
 
-            {/* Dates */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  <span className="text-red-500">*</span> تاريخ البدء
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium focus:outline-none focus:border-red-500 transition"
-                />
+            {/* Contact Method Pills */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2">طرق التواصل في العرض</label>
+              <div className="flex flex-wrap items-center gap-2">
+                {OFFER_CONTACT_METHODS.map((method) => {
+                  const isSelected = contactMethods.includes(method.id);
+                  return (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => handleToggleContactMethod(method.id)}
+                      className={`px-4 py-2 rounded-2xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                        isSelected
+                          ? 'border border-[#d83f2a] bg-rose-50/70 text-[#d83f2a] shadow-xs'
+                          : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      <span className="shrink-0">{method.icon}</span>
+                      <span>{method.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  <span className="text-red-500">*</span> تاريخ الانتهاء
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium focus:outline-none focus:border-red-500 transition"
-                />
-              </div>
+            </div>
+
+            {/* Dynamic Contact Sub-fields */}
+            <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-100">
+              <span className="text-[11px] font-extrabold text-slate-500 block">
+                تفاصيل التواصل للعميل
+              </span>
+
+              {/* Conditional Phone */}
+              {contactMethods.includes('phone') && (
+                <div className="animate-fadeIn">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <span>📞</span>
+                    <span>رقم الاتصال المباشر</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="أدخل رقم الهاتف للتواصل..."
+                    dir="ltr"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium placeholder-slate-400 focus:outline-none focus:border-[#d83f2a] transition text-left"
+                  />
+                </div>
+              )}
+
+              {/* Conditional WhatsApp */}
+              {contactMethods.includes('whatsapp') && (
+                <div className="animate-fadeIn">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <span>💬</span>
+                    <span>رقم الواتساب</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={contactWhatsapp}
+                    onChange={(e) => setContactWhatsapp(e.target.value)}
+                    placeholder="أدخل رقم الواتساب للعرض..."
+                    dir="ltr"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium placeholder-slate-400 focus:outline-none focus:border-[#d83f2a] transition text-left"
+                  />
+                </div>
+              )}
+
+              {/* Conditional Map URL */}
+              {contactMethods.includes('map') && (
+                <div className="animate-fadeIn">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <span>🗺️</span>
+                    <span>رابط الخريطة / الموقع الجغرافي</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={contactMapUrl}
+                    onChange={(e) => setContactMapUrl(e.target.value)}
+                    placeholder="https://maps.google.com/?q=..."
+                    dir="ltr"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium placeholder-slate-400 focus:outline-none focus:border-[#d83f2a] transition text-left"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Status */}
@@ -295,10 +411,10 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
               </div>
             </div>
 
-            {/* Publish Scope */}
+            {/* Publish Scope - Right Aligned (justify-start) */}
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-2">نطاق النشر</label>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-start gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -377,19 +493,19 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
           </div>
 
           {/* Footer Buttons */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-start gap-3">
+            <button
+              type="submit"
+              className="px-8 py-2.5 rounded-xl bg-[#d83f2a] hover:bg-[#c23420] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#d83f2a]/20 transition cursor-pointer"
+            >
+              حفظ
+            </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm transition cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition cursor-pointer"
             >
               إلغاء
-            </button>
-            <button
-              type="submit"
-              className="px-8 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-md shadow-red-600/20 transition cursor-pointer"
-            >
-              حفظ
             </button>
           </div>
         </form>
@@ -397,3 +513,4 @@ export const AddEditOfferModal: React.FC<AddEditOfferModalProps> = ({
     </div>
   );
 };
+
